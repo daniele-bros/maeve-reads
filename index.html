@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#8ecaf0">
+  <title>Maeve Reads</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <div class="sky" aria-hidden="true">
+      <div class="sun"></div>
+      <div class="cloud c1"></div>
+      <div class="cloud c2"></div>
+    </div>
+    <header>
+      <div class="header-side">
+        <button id="replay" class="icon-btn" type="button" aria-label="Hear it again">🔊</button>
+        <button id="home" class="icon-btn" type="button" aria-label="Home" hidden>🏠</button>
+      </div>
+      <div class="stars" aria-label="Stars">
+        <span aria-hidden="true">⭐</span>
+        <span id="starcount">0</span>
+      </div>
+      <div class="header-side">
+        <button id="grown" class="icon-btn" type="button" aria-label="Grown-ups, press and hold">🍃</button>
+      </div>
+    </header>
+    <div id="shell">
+      <aside id="rail">
+        <div id="pip">
+          <svg id="pip-svg" viewBox="0 0 200 230" aria-hidden="true">
+            <ellipse cx="100" cy="198" rx="70" ry="22" fill="#e7c98a" opacity="0.55"/>
+            <ellipse cx="46" cy="78" rx="24" ry="34" fill="#e8923a"/>
+            <ellipse cx="154" cy="78" rx="24" ry="34" fill="#e8923a"/>
+            <ellipse cx="46" cy="78" rx="12" ry="20" fill="#f6c7a1"/>
+            <ellipse cx="154" cy="78" rx="12" ry="20" fill="#f6c7a1"/>
+            <circle cx="100" cy="98" r="62" fill="#f6b34b"/>
+            <ellipse cx="100" cy="116" rx="36" ry="28" fill="#fff3d8"/>
+            <circle cx="76" cy="92" r="9" fill="#3d2b24"/>
+            <circle cx="124" cy="92" r="9" fill="#3d2b24"/>
+            <circle cx="79" cy="89" r="3.2" fill="#fff"/>
+            <circle cx="127" cy="89" r="3.2" fill="#fff"/>
+            <ellipse cx="100" cy="114" rx="9" ry="7" fill="#5c3a2a"/>
+            <path class="smile" d="M86 126 Q100 140 114 126" stroke="#5c3a2a" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <ellipse class="mouth-open" cx="100" cy="130" rx="11" ry="9" fill="#5c3a2a"/>
+            <ellipse cx="62" cy="114" rx="10" ry="6" fill="#ffb0b0"/>
+            <ellipse cx="138" cy="114" rx="10" ry="6" fill="#ffb0b0"/>
+            <path d="M64 152 q36 22 72 0 q-8 24 -36 24 q-28 0 -36 -24z" fill="#ff6b6b"/>
+          </svg>
+        </div>
+        <button id="mic" type="button" aria-label="Say it out loud" hidden>🎤</button>
+      </aside>
+      <main id="main"></main>
+    </div>
+  </div>
+  <div id="confetti" aria-hidden="true"></div>
+  <div id="overlay" hidden></div>
+  <script src="js/progress.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
