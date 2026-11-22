@@ -15,7 +15,7 @@ const PlaySets = {
       { speech: "Catch the bubble with this sound.", clips: ["t"], answer: "t", options: ["t", "p", "d"] },
       { speech: "Catch the bubble with this sound.", clips: ["e"], answer: "e", options: ["e", "a", "i"] },
       { speech: "Catch the bubble with this sound.", clips: ["h"], answer: "h", options: ["h", "n", "r"] },
-      { speech: "Catch the bubble with this sound.", clips: ["d"], answer: "d", options: ["d", "b", "p"] },
+      { speech: "Catch the bubble with this sound.", clips: ["d"], answer: "d", options: ["d", "t", "p"] },
     ],
     feed: [
       { speech: "Feed the monster this word.", clips: ["w:cat"], answer: "cat", options: ["cat", "cap", "can"], picture: "cat" },
@@ -30,22 +30,22 @@ const PlaySets = {
       { speech: "Build the word on the train.", clips: ["w:red"], word: "red", letters: ["r", "e", "d"], bank: ["d", "e", "a", "r", "n"] },
     ],
     hop: [
-      { speech: "Drag the sounds along the path.", word: "sat", letters: ["s", "a", "t"], picture: "sat" },
-      { speech: "Drag the sounds along the path.", word: "pin", letters: ["p", "i", "n"], picture: "pin" },
-      { speech: "Drag the sounds along the path.", word: "hen", letters: ["h", "e", "n"], picture: "hen" },
-      { speech: "Drag the sounds along the path.", word: "map", letters: ["m", "a", "p"], picture: "map" },
+      { speech: "Listen. Now drag the sounds.", word: "sat", letters: ["s", "a", "t"], picture: "sat", clips: ["w:sat"] },
+      { speech: "Listen. Now drag the sounds.", word: "pin", letters: ["p", "i", "n"], picture: "pin", clips: ["w:pin"] },
+      { speech: "Listen. Now drag the sounds.", word: "hen", letters: ["h", "e", "n"], picture: "hen", clips: ["w:hen"] },
+      { speech: "Listen. Now drag the sounds.", word: "map", letters: ["m", "a", "p"], picture: "map", clips: ["w:map"] },
     ],
     fish: [
-      { speech: "Catch the matching word.", clips: ["w:rat"], answer: "rat", options: ["rat", "hat", "ran"], picture: "rat" },
-      { speech: "Catch the matching word.", clips: ["w:bed"], answer: "bed", options: ["bed", "red", "pen"], picture: "bed" },
-      { speech: "Catch the matching word.", clips: ["w:sip"], answer: "sip", options: ["sip", "sit", "tip"], picture: "sip" },
-      { speech: "Catch the matching word.", answer: "dog", options: ["dog", "dad", "dig"], picture: "dog", clips: ["w:dog"] },
+      { speech: "Catch the word that matches.", clips: ["w:rat"], answer: "rat", options: ["rat", "hat", "ran"], picture: "rat" },
+      { speech: "Catch the word that matches.", clips: ["w:bed"], answer: "bed", options: ["bed", "red", "pen"], picture: "bed" },
+      { speech: "Catch the word that matches.", clips: ["w:sip"], answer: "sip", options: ["sip", "sit", "sat"], picture: "sip" },
+      { speech: "Catch the word that matches.", answer: "dad", options: ["dad", "sad", "mad"], picture: "dad", clips: ["w:dad"] },
     ],
     mystery: [
-      { speech: "Read the word. Open its box.", word: "cat", letters: ["c", "a", "t"], answer: "cat", options: ["cat", "cap", "can"] },
-      { speech: "Read the word. Open its box.", word: "sun", letters: ["s", "u", "n"], answer: "sun", options: ["sun", "sat", "sip"] },
-      { speech: "Read the word. Open its box.", word: "pig", letters: ["p", "i", "g"], answer: "pig", options: ["pig", "pin", "pan"] },
-      { speech: "Read the word. Open its box.", word: "hat", letters: ["h", "a", "t"], answer: "hat", options: ["hat", "hit", "rat"] },
+      { speech: "This word matches one picture.", word: "cat", letters: ["c", "a", "t"], answer: "cat", options: ["cat", "cap", "can"], clips: ["w:cat"] },
+      { speech: "This word matches one picture.", word: "map", letters: ["m", "a", "p"], answer: "map", options: ["map", "mat", "mad"], clips: ["w:map"] },
+      { speech: "This word matches one picture.", word: "hen", letters: ["h", "e", "n"], answer: "hen", options: ["hen", "hat", "pen"], clips: ["w:hen"] },
+      { speech: "This word matches one picture.", word: "hat", letters: ["h", "a", "t"], answer: "hat", options: ["hat", "hit", "rat"], clips: ["w:hat"] },
     ],
   },
 
@@ -72,9 +72,17 @@ const PlaySets = {
   present(step) {
     this.step = step;
     this.filled = [];
+    this.misses = 0;
     const view = this["view_" + step.game];
-    main.innerHTML = `<div class="play mini">${view.call(this, step)}${skipHTML()}</div>`;
+    const held = Game.shot ? "" : " hold";
+    main.innerHTML = `<div class="play mini${held}">${view.call(this, step)}${skipHTML()}</div>`;
     updateMic(step);
+  },
+
+  unlock() {
+    Game.ready = true;
+    const board = document.querySelector(".mini");
+    if (board) board.classList.remove("hold");
   },
 
   piece(label, extra) {
@@ -113,6 +121,7 @@ const PlaySets = {
       return `<button type="button" class="piece" data-letter="${esc(letter)}">${esc(letter)}</button>`;
     }).join("");
     return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
+      ${targetButton(PICS[step.word])}
       <div class="train"><span class="engine">🚂</span>${cars}</div>
       <div class="pieces">${bits}</div>`;
   },
@@ -123,7 +132,8 @@ const PlaySets = {
       return `<button type="button" class="piece" data-letter="${esc(letter)}">${esc(letter)}</button>`;
     }).join("");
     return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
-      <div class="path">${stones}<div class="prize">${PICS[step.picture] || ""}</div></div>
+      ${targetButton(PICS[step.picture])}
+      <div class="path">${stones}</div>
       <div class="pieces">${bits}</div>`;
   },
 
@@ -140,7 +150,7 @@ const PlaySets = {
 
   view_mystery(step) {
     const boxes = shuffled(step.options).map((word) => {
-      return `<div class="gift" data-slot="${esc(word)}">🎁</div>`;
+      return `<div class="gift pic-target" data-slot="${esc(word)}" data-accept="${esc(word)}">${PICS[word] || ""}</div>`;
     }).join("");
     return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
       <button type="button" class="piece word-card big-piece" data-key="${esc(step.answer)}">${esc(step.word)}</button>
@@ -190,7 +200,7 @@ const PlaySets = {
 
   drop(piece, event) {
     const step = this.step;
-    if (!step || Game.lock || piece.disabled) return;
+    if (!step || Game.lock || !Game.ready || piece.disabled) return;
     const x = event.clientX;
     const y = event.clientY;
     if (step.game === "train" || step.game === "hop") {
@@ -207,12 +217,15 @@ const PlaySets = {
         AudioBus.playClip(soundId(need));
         if (this.filled.length === step.letters.length) {
           AudioBus.playClip("w:" + step.word);
-          const prize = document.querySelector(".prize");
-          if (prize) prize.classList.add("show");
-          succeed(step, { spoken: false, clean: true });
+          confetti(true);
+          succeed(step, { spoken: false, clean: this.misses === 0 });
         }
         return;
       }
+      this.misses += 1;
+      const hint = document.querySelector('.piece[data-letter="' + need + '"]:not(.used)');
+      if (hint) hint.classList.add("show-me");
+      AudioBus.playClip(soundId(need));
       this.back(piece);
       return;
     }
@@ -241,13 +254,24 @@ const PlaySets = {
 
   tap(button) {
     const step = this.step;
-    if (!step || Game.lock) return;
+    if (!step || Game.lock || !Game.ready) return;
     if (button.dataset.key === step.answer) {
       button.classList.add("popped");
-      succeed(step, { spoken: false, clean: true });
+      confetti(false);
+      succeed(step, { spoken: false, clean: this.misses === 0 });
       return;
     }
+    this.misses += 1;
     button.classList.add("wiggle");
+    document.querySelectorAll(".balloon, .bubble").forEach((el) => {
+      el.classList.toggle("show-me", el.dataset.key === step.answer);
+    });
+    if (step.clips && step.clips[0]) AudioBus.playClip(step.clips[0]);
     this.goofy();
+    if (this.misses >= 2) {
+      const good = document.querySelector('.balloon[data-key="' + step.answer + '"], .bubble[data-key="' + step.answer + '"]');
+      if (good) good.classList.add("popped");
+      succeed(step, { spoken: false, clean: false });
+    }
   },
 };

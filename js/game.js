@@ -91,7 +91,7 @@ function decorate(step) {
   if (step.voice && micOn() && !Progress.data.micTold) {
     Progress.data.micTold = true;
     Progress.save();
-    line += " You can say it. Tap the microphone. Or tap a picture.";
+    line += " You can say it, or tap.";
   }
   return line;
 }
@@ -134,7 +134,9 @@ function updateMic(step) {
 
 function renderChrome() {
   document.getElementById("starcount").textContent = String(Progress.data.stars || 0);
-  document.getElementById("home").hidden = Game.screen === "start" || Game.screen === "picker";
+  document.getElementById("home").hidden = Game.screen !== "map";
+  const nav = document.getElementById("round-nav");
+  if (nav) nav.hidden = Game.screen !== "play";
   document.body.dataset.screen = Game.screen;
 }
 
@@ -231,7 +233,57 @@ function armIdle() {
 }
 
 function skipHTML() {
-  return '<button type="button" id="skip" class="skip-btn" aria-label="Next">Next</button>';
+  return "";
+}
+
+function targetButton(emoji) {
+  if (!emoji) return "";
+  return `<button type="button" id="replay-target" class="target-pic" aria-label="Hear it again">${emoji}</button>`;
+}
+
+function recoverRound() {
+  Game.lock = false;
+  Game.misses = 0;
+  Game.forceAnswer = false;
+  Game.spell = null;
+  Game.blend = null;
+  Game.phase = "pick";
+  press = null;
+  if (ghost) {
+    ghost.remove();
+    ghost = null;
+  }
+  if (typeof PlaySets !== "undefined") {
+    PlaySets.filled = [];
+    PlaySets.misses = 0;
+  }
+  document.querySelectorAll("button.pressed").forEach((button) => button.classList.remove("pressed"));
+  const mic = document.getElementById("mic");
+  if (mic) mic.classList.remove("listening");
+  AudioBus.stop();
+}
+
+function retryRound() {
+  recoverRound();
+  Game.token += 1;
+  presentStep();
+}
+
+function backRound() {
+  recoverRound();
+  if (Game.index <= 0) {
+    showMap({ speak: "Tap the glowing game." });
+    return;
+  }
+  Game.index -= 1;
+  Game.token += 1;
+  presentStep();
+}
+
+function skipRound() {
+  recoverRound();
+  Game.token += 1;
+  nextStep();
 }
 
 async function runAudio(step, my) {
@@ -256,6 +308,7 @@ async function presentStep() {
   }
   Game.step = step;
   Game.lock = false;
+  Game.ready = step.type !== "play" || !!Game.shot;
   Game.misses = 0;
   Game.forceAnswer = false;
   Game.nudged = false;
@@ -295,9 +348,17 @@ async function presentStep() {
   if (step.type === "play") {
     PlaySets.present(step);
     renderChrome();
-    if (!Game.shot) {
-      await runAudio(step, my);
+    const release = () => {
+      if (my === Game.token) PlaySets.unlock();
+    };
+    if (Game.shot) {
+      PlaySets.unlock();
+      return;
     }
+    const fail = setTimeout(release, 2200);
+    await runAudio(step, my);
+    clearTimeout(fail);
+    release();
     return;
   }
   if (step.type === "sentence") {
@@ -639,8 +700,9 @@ function replay() {
   const step = Game.step;
   if (!step) return;
   AudioBus.stop();
-  if (step.word && (step.type === "blend" || step.type === "read" || step.type === "spell")) {
-    AudioBus.playClip("w:" + step.word);
+  const clip = (step.clips && step.clips[0]) || (step.word ? "w:" + step.word : "");
+  if (clip) {
+    AudioBus.playClip(clip);
     return;
   }
   AudioBus.speak(step._line || step.speech || "Tap the picture.");
@@ -902,6 +964,7 @@ function presentSpell(step) {
   main.innerHTML = `<div class="play">
     <div class="pips">${pipsHTML()}</div>
     <p class="prompt" id="prompt">${esc(step._line || step.speech || "")}</p>
+    ${targetButton(PICS[step.word])}
     <div class="slots">${slots}</div>
     <div class="bank">${bank}</div>
     ${star}
@@ -1024,12 +1087,10 @@ function handleButton(button) {
   if (button.id === "home") return showPicker();
   if (button.id === "mic") return onMic();
   if (button.id === "play") return onPlay();
-  if (button.id === "next" || button.id === "skip") {
-    Game.lock = false;
-    Game.token += 1;
-    AudioBus.stop();
-    return nextStep();
-  }
+  if (button.id === "next" || button.id === "skip" || button.id === "nav-next") return skipRound();
+  if (button.id === "nav-back") return backRound();
+  if (button.id === "nav-retry" || button.id === "replay-target") return button.id === "nav-retry" ? retryRound() : replay();
+  if (button.id === "nav-home") return showMap({ speak: "Tap the glowing game." });
   if (button.id === "wedo") return onWedo();
   if (button.id === "swoop") return onSwoop();
   if (button.id === "help") return onHelp();

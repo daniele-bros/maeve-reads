@@ -418,6 +418,47 @@ h1 {
 .prize.show { opacity: 1; transform: scale(1); transition: 0.3s; }
 .snapped { animation: yay 0.4s ease; background: #fff4cc; }
 
+#round-nav {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  z-index: 30;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 22px;
+  background: rgba(255, 253, 248, 0.92);
+  box-shadow: 0 6px 0 rgba(61, 43, 36, 0.12);
+}
+#round-nav[hidden] { display: none !important; }
+.nav-btn {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  min-height: 64px;
+  border-radius: 18px;
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.nav-btn svg { width: 36px; height: 36px; }
+.target-pic, .hear-btn {
+  min-width: 96px;
+  min-height: 96px;
+  border-radius: 28px;
+  background: white;
+  box-shadow: 0 6px 0 var(--line);
+  font-size: 72px;
+  line-height: 1;
+}
+.mini.hold .piece,
+.mini.hold .balloon,
+.mini.hold .bubble { pointer-events: none; }
+
 .skip-btn {
   min-width: 96px;
   min-height: 64px;

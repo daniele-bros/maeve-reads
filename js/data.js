@@ -714,7 +714,8 @@ const Session = {
         { text: "the", say: "the", tricky: true },
         { text: "is", say: "is", tricky: true },
       ],
-      speech: "Some words we remember. a. the. is. We do not sound them out.",
+      speech: "We remember these words. Listen.",
+      clips: ["w:a", "w:the", "w:is"],
       choices: [],
       answer: "",
     }, {
@@ -727,7 +728,8 @@ const Session = {
         { text: "red", say: "red", letters: ["r", "e", "d"] },
         { text: "hat", say: "hat", letters: ["h", "a", "t"] },
       ],
-      speech: "a red hat.",
+      speech: "Listen to this little line.",
+      clips: ["w:a", "w:red", "w:hat"],
       choices: [{ key: "redhat", emoji: "🎩" }],
       answer: "redhat",
     }];
