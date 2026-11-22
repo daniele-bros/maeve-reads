@@ -114,6 +114,7 @@ const PATH2 = [
   { id: "fish", label: "Fish", icon: "🎣", free: true },
   { id: "bubble", label: "Bubbles", icon: "🫧", free: true },
   { id: "mystery", label: "Mystery", icon: "🎁", free: true },
+  { id: "reader", label: "Read", icon: "💧", free: true },
 ];
 
 const RHYMES = [
@@ -162,7 +163,7 @@ const DECODABLE = {
 };
 
 const WORD_FOILS = {
-  sat: ["dog", "sun"],
+  sat: ["mat", "pan"],
   pat: ["sat", "tap"],
   tap: ["pat", "sat"],
   pin: ["pan", "tin"],
@@ -184,17 +185,93 @@ function spin() {
   return Progress.data.spin || 0;
 }
 
+const Deal = {
+  seq: 1,
+  lastPos: [],
+  posCount: {},
+  lastKey: "",
+  bump() {
+    this.seq = (this.seq * 1103515245 + 12345 + (spin() % 97)) % 2147483647;
+    if (this.seq < 1) this.seq = 1;
+    return this.seq;
+  },
+  unique(list) {
+    const out = [];
+    (list || []).forEach((item) => {
+      if (item && out.indexOf(item) === -1) out.push(item);
+    });
+    return out;
+  },
+  shuffle(arr) {
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = this.bump() % (i + 1);
+      const tmp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = tmp;
+    }
+    return copy;
+  },
+  withAnswer(answer, options) {
+    const foils = this.unique(options).filter((item) => item !== answer);
+    const picked = this.shuffle(foils).slice(0, 2);
+    const items = picked.concat([answer]);
+    return this.place(items, answer);
+  },
+  place(items, answer) {
+    let ordered = this.shuffle(this.unique(items));
+    if (ordered.indexOf(answer) < 0) ordered.push(answer);
+    const moveAnswer = (to) => {
+      const from = ordered.indexOf(answer);
+      if (from < 0 || to === from || to < 0 || to >= ordered.length) return;
+      const tmp = ordered[to];
+      ordered[to] = ordered[from];
+      ordered[from] = tmp;
+    };
+    let pos = ordered.indexOf(answer);
+    const recent = this.lastPos;
+    if (recent.length >= 2 && recent[recent.length - 1] === pos && recent[recent.length - 2] === pos) {
+      moveAnswer((pos + 1 + (this.bump() % Math.max(1, ordered.length - 1))) % ordered.length);
+      pos = ordered.indexOf(answer);
+    }
+    const n = ordered.length;
+    const counts = [];
+    for (let i = 0; i < n; i += 1) counts[i] = this.posCount[n + ":" + i] || 0;
+    const min = Math.min.apply(null, counts);
+    if (counts[pos] > min + 1) {
+      let least = 0;
+      for (let i = 1; i < n; i += 1) if (counts[i] < counts[least]) least = i;
+      const wouldRun = recent.length >= 1 && recent[recent.length - 1] === least && recent.length >= 2 && recent[recent.length - 2] === least;
+      if (!wouldRun) {
+        moveAnswer(least);
+        pos = least;
+      }
+    }
+    this.lastPos.push(pos);
+    if (this.lastPos.length > 6) this.lastPos.shift();
+    this.posCount[n + ":" + pos] = (this.posCount[n + ":" + pos] || 0) + 1;
+    this.lastKey = String(answer);
+    return ordered;
+  },
+  rounds(pool, n) {
+    const bag = [];
+    let guard = 0;
+    while (bag.length < n && guard < 30) {
+      guard += 1;
+      this.shuffle(pool).forEach((item) => {
+        if (bag.length >= n) return;
+        const key = String(item.answer || item.word || item.id || "");
+        if (key && key === this.lastKey) return;
+        bag.push(item);
+        this.lastKey = key;
+      });
+    }
+    return bag.slice(0, n);
+  },
+};
+
 function shuffled(arr) {
-  const copy = arr.slice();
-  let seed = (spin() + 1) * 997 + copy.length * 13;
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    seed = (seed * 1103515245 + 12345) % 2147483647;
-    const j = seed % (i + 1);
-    const tmp = copy[i];
-    copy[i] = copy[j];
-    copy[j] = tmp;
-  }
-  return copy;
+  return Deal.shuffle(arr);
 }
 
 function rotate(pool, n) {
@@ -204,8 +281,9 @@ function rotate(pool, n) {
   return out;
 }
 
-function picChoices(keys) {
-  return shuffled(keys).map((key) => ({ key, emoji: PICS[key] }));
+function picChoices(keys, answer) {
+  const ordered = Deal.withAnswer(answer || keys[0], keys || []);
+  return ordered.map((key) => ({ key, emoji: PICS[key] || SCENE[key] || "" }));
 }
 
 function letterChoices(answer) {
@@ -222,7 +300,7 @@ function letterChoices(answer) {
     if (foil !== answer && pick.indexOf(foil) === -1) pick.push(foil);
     if (i > spin() + 20) break;
   }
-  return shuffled([answer].concat(pick)).map((letter) => ({ key: letter, letter }));
+  return Deal.withAnswer(answer, [answer].concat(pick)).map((letter) => ({ key: letter, letter }));
 }
 
 function letterFind(target, lesson) {
@@ -256,7 +334,7 @@ function pictureFind(letter, lesson) {
     skill: lesson,
     speech: "Which picture starts like " + info.keyword + "?",
     clips: [info.clip || letter],
-    choices: picChoices([info.keyword, foilA, foilB]),
+    choices: picChoices([info.keyword, foilA, foilB], info.keyword),
     answer: info.keyword,
     accept: [info.keyword],
     voice: "word",
@@ -291,7 +369,7 @@ const BLEND2 = [
   { id: "hat", letters: ["h", "a", "t"], foils: ["rat", "hit"], accept: ["hat"] },
   { id: "rat", letters: ["r", "a", "t"], foils: ["hat", "ran"], accept: ["rat"] },
   { id: "hen", letters: ["h", "e", "n"], foils: ["pen", "ten"], accept: ["hen"] },
-  { id: "red", letters: ["r", "e", "d"], foils: ["bed", "hen"], accept: ["red"] },
+  { id: "red", letters: ["r", "e", "d"], foils: ["dad", "hen"], accept: ["red"] },
   { id: "ran", letters: ["r", "a", "n"], foils: ["rat", "ram"], accept: ["ran", "run"] },
   { id: "pen", letters: ["p", "e", "n"], foils: ["pet", "hen"], accept: ["pen"] },
 ];
@@ -406,7 +484,7 @@ const Session = {
         skill: "rhyme",
         speech: "Which one rhymes with " + round.word + "?",
         clips: ["w:" + round.word],
-        choices: picChoices(round.options),
+        choices: picChoices(round.options, round.answer),
         answer: round.answer,
         accept: [round.answer],
         voice: "word",
@@ -431,7 +509,7 @@ const Session = {
         skill: "first",
         speech: "Which picture starts with this sound?",
         clips: [round.ph],
-        choices: picChoices(round.options),
+        choices: picChoices(round.options, round.answer),
         answer: round.answer,
         accept: [round.answer],
         voice: "word",
@@ -478,7 +556,7 @@ const Session = {
         speech: "What word is that?",
         clips: item[key],
         gap,
-        choices: picChoices(item.options),
+        choices: picChoices(item.options, item.word),
         answer: item.word,
         accept: item.accept,
         voice: "word",
@@ -561,7 +639,7 @@ const Session = {
         word,
         letters: DECODABLE[word].letters,
         speech: "Tap each sound. Then swoop.",
-        choices: picChoices([word].concat(foils)),
+        choices: picChoices([word].concat(foils), word),
         answer: word,
         accept: DECODABLE[word].accept,
         voice: "word",
@@ -632,7 +710,7 @@ const Session = {
         speech: fade === "open"
           ? "Read the word. Tap a letter if you want a sound. Then swoop."
           : "Tap each sound. Then swoop.",
-        choices: picChoices([item.id].concat(item.foils)),
+        choices: picChoices([item.id].concat(item.foils), item.id),
         answer: item.id,
         accept: item.accept,
         voice: "word",
@@ -663,7 +741,7 @@ const Session = {
         word: item.id,
         letters: item.letters,
         speech: "Read the word. Then tap the picture.",
-        choices: picChoices(item.options),
+        choices: picChoices(item.options, item.id),
         answer: item.id,
         accept: item.accept,
         voice: "word",
@@ -741,7 +819,7 @@ const Session = {
         skill: "stories",
         words: item.words,
         speech: "Read it. Then tap the picture.",
-        choices: item.options.map((key) => ({ key, emoji: SCENE[key] || PICS[key] })),
+        choices: Deal.withAnswer(item.id, item.options).map((key) => ({ key, emoji: SCENE[key] || PICS[key] || "" })),
         answer: item.id,
         accept: item.accept,
         voice: "word",

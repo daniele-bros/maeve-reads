@@ -256,6 +256,7 @@ function recoverRound() {
   if (typeof PlaySets !== "undefined") {
     PlaySets.filled = [];
     PlaySets.misses = 0;
+    if (PlaySets.stopHint) PlaySets.stopHint();
   }
   document.querySelectorAll("button.pressed").forEach((button) => button.classList.remove("pressed"));
   const mic = document.getElementById("mic");
@@ -353,12 +354,14 @@ async function presentStep() {
     };
     if (Game.shot) {
       PlaySets.unlock();
+      if (step.game === "reader") AudioBus.seaStart();
       return;
     }
     const fail = setTimeout(release, 2200);
     await runAudio(step, my);
     clearTimeout(fail);
     release();
+    if (my === Game.token && step.game === "reader") AudioBus.seaStart();
     return;
   }
   if (step.type === "sentence") {
@@ -640,6 +643,7 @@ function celeHTML(sticker, line) {
     <div class="cele-actions">
       <button id="rest" class="big-btn rest" type="button" aria-label="All done">🏠</button>
       <button id="more" class="big-btn more" type="button" aria-label="Play more">▶</button>
+      <button id="again" class="big-btn again" type="button" aria-label="Play again">↻<span>Play again!</span></button>
     </div>
   </div>`;
 }
@@ -700,6 +704,11 @@ function replay() {
   const step = Game.step;
   if (!step) return;
   AudioBus.stop();
+  if (step.game === "reader") {
+    AudioBus.speak(step.speech || "Read the word. Pop its picture.");
+    if (Game.ready) AudioBus.seaStart();
+    return;
+  }
   const clip = (step.clips && step.clips[0]) || (step.word ? "w:" + step.word : "");
   if (clip) {
     AudioBus.playClip(clip);
@@ -1096,6 +1105,8 @@ function handleButton(button) {
   if (button.id === "help") return onHelp();
   if (button.id === "rest") return showMap({ speak: "You got a sticker. Tap the glowing game when you want to play." });
   if (button.id === "more") return onMore();
+  if (button.id === "again") return startSkill(Game.skill || Game.node);
+  if (button.id === "hint") return PlaySets.sayHint();
   if (button.id === "close-grown") return closeGrownup();
   if (button.id === "mic-toggle") {
     Progress.data.mic = !Progress.data.mic;

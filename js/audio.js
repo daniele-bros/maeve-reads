@@ -68,6 +68,7 @@ const AudioBus = {
       }
       this.audio = null;
     }
+    this.seaStop();
     const pip = document.getElementById("pip");
     if (pip) pip.classList.remove("talking");
     if (this.keepAlive) {
@@ -178,6 +179,52 @@ const AudioBus = {
     amp.connect(this.ctx.destination);
     osc.start(when);
     osc.stop(when + dur + 0.02);
+  },
+
+  pop() {
+    this.unlock();
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const len = Math.floor(ctx.sampleRate * 0.07);
+    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i += 1) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.22;
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+  },
+
+  seaStart() {
+    this.unlock();
+    if (!this.ctx || this.sea) return;
+    const ctx = this.ctx;
+    const len = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i += 1) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 420;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.02;
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+    this.sea = src;
+  },
+
+  seaStop() {
+    if (!this.sea) return;
+    try { this.sea.stop(); } catch (err) { /* already stopped */ }
+    this.sea = null;
   },
 
   chime(big) {

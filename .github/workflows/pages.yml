@@ -24,6 +24,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate round content
+        run: node tools/validate-content.mjs
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:

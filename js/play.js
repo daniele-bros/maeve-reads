@@ -1,7 +1,7 @@
 /* Short playful rounds. Every tap or drag is still a reading rep. */
 const PlaySets = {
   has(id) {
-    return !!this.pools[id];
+    return id === "reader" || !!this.pools[id];
   },
 
   pools: {
@@ -37,7 +37,7 @@ const PlaySets = {
     ],
     fish: [
       { speech: "Catch the word that matches.", clips: ["w:rat"], answer: "rat", options: ["rat", "hat", "ran"], picture: "rat" },
-      { speech: "Catch the word that matches.", clips: ["w:bed"], answer: "bed", options: ["bed", "red", "pen"], picture: "bed" },
+      { speech: "Catch the word that matches.", clips: ["w:hit"], answer: "hit", options: ["hit", "hat", "sit"], picture: "hit" },
       { speech: "Catch the word that matches.", clips: ["w:sip"], answer: "sip", options: ["sip", "sit", "sat"], picture: "sip" },
       { speech: "Catch the word that matches.", answer: "dad", options: ["dad", "sad", "mad"], picture: "dad", clips: ["w:dad"] },
     ],
@@ -49,34 +49,86 @@ const PlaySets = {
     ],
   },
 
+  lengthFor(id) {
+    if (id === "reader" || id === "feed" || id === "train" || id === "hop" || id === "fish" || id === "mystery") return 11;
+    return 9;
+  },
+
   build(id) {
-    return rotate(this.pools[id], 3).map((item) => ({
+    if (id === "reader") return this.buildReader();
+    const items = Deal.rounds(this.pools[id], this.lengthFor(id));
+    return items.map((item) => ({
       type: "play",
       game: id,
       score: true,
       skill: id,
-      voice: item.clips && String(item.clips[0]).indexOf("w:") === 0 ? "word" : "phoneme",
-      phoneme: item.answer && item.answer.length === 1 ? item.answer : null,
+      voice: item.clips && String(item.clips[0]).indexOf("w:") === 0 ? "word" : (item.answer && item.answer.length === 1 ? "phoneme" : "word"),
+      phoneme: item.answer && String(item.answer).length === 1 ? item.answer : null,
       accept: item.word ? [item.word] : [item.answer],
       speech: item.speech,
       clips: item.clips || [],
       answer: item.answer || item.word,
       options: item.options || item.letters,
-      picture: item.picture,
+      picture: item.picture || item.answer || item.word,
       word: item.word,
       letters: item.letters,
       bank: item.bank,
     }));
   },
 
+  buildReader() {
+    const bank = [
+      "cat", "hat", "mat", "sat", "pat", "pan", "pin", "map", "cap", "can",
+      "hen", "pen", "rat", "ham", "red", "hit", "sip", "sit", "tap", "nap", "mad", "dad", "ran", "tin",
+    ];
+    const words = Deal.rounds(bank.map((id) => ({ answer: id })), 12).map((item) => item.answer);
+    const groups = [
+      [words[0]], [words[1]], [words[2]],
+      [words[3], words[4]], [words[5], words[6]], [words[7], words[8]],
+      [words[9], words[10], words[11]],
+    ];
+    let done = 0;
+    return groups.map((queue) => {
+      const extras = Deal.shuffle(bank.filter((id) => queue.indexOf(id) === -1)).slice(0, queue.length === 1 ? 2 : 1);
+      const step = {
+        type: "play",
+        game: "reader",
+        score: true,
+        skill: "reader",
+        speech: "Read the word. Pop its picture.",
+        clips: [],
+        queue,
+        answer: queue[0],
+        word: queue[0],
+        picture: queue[0],
+        options: queue.concat(extras),
+        doneWords: done,
+        totalWords: 12,
+        accept: queue.slice(),
+      };
+      done += queue.length;
+      return step;
+    });
+  },
+
+  choiceOrder(step) {
+    const options = (step.options || []).concat([step.answer]);
+    if (step.game === "reader") return Deal.place(Deal.unique(options), step.answer);
+    return Deal.withAnswer(step.answer, step.options || []);
+  },
+
   present(step) {
     this.step = step;
     this.filled = [];
     this.misses = 0;
+    this.cursor = 0;
     const view = this["view_" + step.game];
     const held = Game.shot ? "" : " hold";
-    main.innerHTML = `<div class="play mini${held}">${view.call(this, step)}${skipHTML()}</div>`;
+    const pips = step.game === "reader" ? "" : `<div class="pips">${pipsHTML()}</div>`;
+    main.innerHTML = `<div class="play mini${held}">${pips}${view.call(this, step)}${skipHTML()}</div>`;
     updateMic(step);
+    this.combo = step.game === "reader" && step.doneWords ? this.combo || 0 : 0;
+    if (step.game === "reader") this.armHint();
   },
 
   unlock() {
@@ -89,22 +141,44 @@ const PlaySets = {
     return `<button type="button" class="piece ${extra || ""}" ${extra || ""}>${label}</button>`;
   },
 
+  view_reader(step) {
+    const keys = this.choiceOrder(step);
+    const bubbles = keys.map((word, index) => {
+      return `<button type="button" class="bubble reader-bubble b${index % 4}" data-key="${esc(word)}" style="animation-delay:${(index * 1.1).toFixed(1)}s" aria-label="${esc(word)}">${PICS[word] || ""}</button>`;
+    }).join("");
+    const queue = (step.queue || [step.answer]).map((word, index) => {
+      return `<span class="queue-word${index === 0 ? " now" : ""}">${esc(word)}</span>`;
+    }).join("");
+    const pips = Array.from({ length: step.totalWords || 12 }, (_, index) => {
+      return `<i class="${index < (step.doneWords || 0) ? "on" : ""}"></i>`;
+    }).join("");
+    return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
+      <div class="track">${pips}</div>
+      <div class="word-queue">${queue}<button type="button" id="hint" class="hint" aria-label="Hear the word">🔊</button></div>
+      <div class="streak" id="streak"></div>
+      <div class="tank">
+        <div class="reef far"></div>
+        <div class="reef near"></div>
+        ${bubbles}
+      </div>`;
+  },
+
   view_pop(step) {
-    const balls = shuffled(step.options).map((letter, i) => {
+    const balls = this.choiceOrder(step).map((letter, i) => {
       return `<button type="button" class="balloon b${i}" data-key="${esc(letter)}" aria-label="${esc(letter)}">${esc(letter)}</button>`;
     }).join("");
     return `<p class="prompt" id="prompt">${esc(step.speech)}</p><div class="sky-play">${balls}</div>`;
   },
 
   view_bubble(step) {
-    const balls = shuffled(step.options).map((letter, i) => {
+    const balls = this.choiceOrder(step).map((letter, i) => {
       return `<button type="button" class="bubble b${i}" data-key="${esc(letter)}" aria-label="${esc(letter)}">${esc(letter)}</button>`;
     }).join("");
     return `<p class="prompt" id="prompt">${esc(step.speech)}</p><div class="pond">${balls}</div>`;
   },
 
   view_feed(step) {
-    const cards = shuffled(step.options).map((word) => {
+    const cards = this.choiceOrder(step).map((word) => {
       return `<button type="button" class="piece word-card" data-key="${esc(word)}">${esc(word)}</button>`;
     }).join("");
     return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
@@ -138,7 +212,7 @@ const PlaySets = {
   },
 
   view_fish(step) {
-    const fish = shuffled(step.options).map((word, i) => {
+    const fish = this.choiceOrder(step).map((word, i) => {
       return `<button type="button" class="piece fish f${i}" data-key="${esc(word)}">${esc(word)}</button>`;
     }).join("");
     return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
@@ -149,7 +223,7 @@ const PlaySets = {
   },
 
   view_mystery(step) {
-    const boxes = shuffled(step.options).map((word) => {
+    const boxes = this.choiceOrder(step).map((word) => {
       return `<div class="gift pic-target" data-slot="${esc(word)}" data-accept="${esc(word)}">${PICS[word] || ""}</div>`;
     }).join("");
     return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
@@ -252,9 +326,73 @@ const PlaySets = {
     this.back(piece);
   },
 
+  armHint() {
+    clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => {
+      const hint = document.getElementById("hint");
+      if (hint && Game.step && Game.step.game === "reader") hint.classList.add("show");
+    }, 4500);
+  },
+
+  stopHint() {
+    clearTimeout(this.hintTimer);
+  },
+
+  sayHint() {
+    const step = this.step;
+    if (!step || step.game !== "reader") return;
+    const word = step.queue[this.cursor];
+    if (word) AudioBus.playClip("w:" + word);
+  },
+
+  popReader(button) {
+    const step = this.step;
+    if (!step || Game.lock || !Game.ready) return;
+    const want = step.queue[this.cursor];
+    if (button.dataset.key !== want) {
+      button.classList.add("away");
+      this.goofy();
+      setTimeout(() => button.classList.remove("away"), 700);
+      return;
+    }
+    button.classList.add("popped");
+    AudioBus.pop();
+    this.combo = (this.combo || 0) + 1;
+    const streak = document.getElementById("streak");
+    if (streak) {
+      streak.textContent = this.combo > 1 ? this.combo + " ✨" : "";
+      streak.classList.toggle("on", this.combo > 1);
+    }
+    const track = document.querySelectorAll(".track i");
+    this.cursor += 1;
+    const mark = (step.doneWords || 0) + this.cursor;
+    track.forEach((pip, index) => pip.classList.toggle("on", index < mark));
+    document.querySelectorAll(".queue-word").forEach((el, index) => {
+      el.classList.toggle("now", index === this.cursor);
+      el.classList.toggle("done", index < this.cursor);
+    });
+    const hint = document.getElementById("hint");
+    if (hint) hint.classList.remove("show");
+    if (mark === 6) confetti(true);
+    const finished = this.cursor >= step.queue.length;
+    const finale = mark >= step.totalWords;
+    if (finale) {
+      const tank = document.querySelector(".tank");
+      if (tank) tank.classList.add("finale");
+      confetti(true);
+    }
+    const said = AudioBus.playClip("w:" + want);
+    if (finished) {
+      Promise.resolve(said).then(() => succeed(step, { spoken: false, clean: true }));
+      return;
+    }
+    this.armHint();
+  },
+
   tap(button) {
     const step = this.step;
     if (!step || Game.lock || !Game.ready) return;
+    if (step.game === "reader") return this.popReader(button);
     if (button.dataset.key === step.answer) {
       button.classList.add("popped");
       confetti(false);

@@ -58,10 +58,12 @@ What she sees and hears first, what she does, the feedback, and what comes next.
 
 **Sound path.** Same: picture and spoken word first, then she drags s, a, t onto the stones in order. Finishing plays the whole word again and celebrates. The picture was never a prize she had to earn before she knew the word.
 
-**Fish.** The picture sits in the net and the word is spoken. She drags the matching word-fish to the net.
+**Fish.** The picture sits in the net and the word is spoken. Three word-fish sit in a row beside it, so none can hide under the net. She drags the matching word to the picture. The answer is always one of the three.
 
 **Mystery.** Three pictures are face-up. The word is printed and spoken. She drags that word onto the matching picture. Sparkle is the bonus. She never has to guess what is inside a closed box.
 
+**Bubble Pop Reader.** This one is reading, so Pip does not say the word first. One word, then two, then three, show at the top, and the current word is large. Bubbles with pictures drift in the water. She pops them in order. The right pop makes a pop, a sparkle, and says that word. A wrong bubble wobbles back, with no penalty. Bubbles stay in the tank and loop, and every word in the list has a picture on screen. After a few seconds a hint button can say the current word. Twelve words, then a big finish and Play again.
+
 ## Session shape
 
-Teaching rounds are about five tries. Playful rounds are three. Then a sticker and a stop. Back, Retry, and Next do not change mastery. Retry throws away a stuck sound, a stuck drag, and a hung microphone, then plays the prompt again on the same item.
+Teaching rounds are about five tries. Drag and match games are about eleven. Pop games are about nine. Bubble Pop Reader is twelve words. Then a sticker, Play again, or stop. Back, Retry, and Next do not change mastery. Retry throws away a stuck sound, a stuck drag, and a hung microphone, then plays the prompt again on the same item. A content check builds 500 sessions of every game before the site deploys.
