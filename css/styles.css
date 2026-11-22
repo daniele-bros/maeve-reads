@@ -358,6 +358,16 @@ h1 {
 
 .star-next:active { transform: translateY(4px); }
 
+.skip-btn {
+  min-width: 96px;
+  min-height: 64px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.92);
+  box-shadow: 0 5px 0 var(--line);
+  font-size: 22px;
+}
+
 .beads { display: flex; gap: 12px; }
 
 .bead {

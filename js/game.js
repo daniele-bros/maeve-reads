@@ -148,6 +148,7 @@ function renderStep(step) {
       ${step.beads ? beadsHTML(step.beads) : ""}
       <div class="stage-row">${pictures}${letter}</div>
       <button class="star-next" id="next" type="button" aria-label="Next">★</button>
+      ${skipHTML()}
     </div>`;
     return;
   }
@@ -156,15 +157,16 @@ function renderStep(step) {
       <p class="prompt" id="prompt">${line}</p>
       <button class="giant-letter" id="wedo" type="button" aria-label="Say the sound">${esc(step.letter)}</button>
       <div class="big-emoji">${step.emoji || ""}</div>
+      ${skipHTML()}
     </div>`;
     return;
   }
-  const hidden = Game.shot ? "" : " hidden";
   main.innerHTML = `<div class="play">
     <div class="pips">${pipsHTML()}</div>
     <p class="prompt" id="prompt">${line}</p>
     ${step.beads ? beadsHTML(step.beads) : ""}
-    <div class="choices${hidden}">${(step.choices || []).map(choiceHTML).join("")}</div>
+    <div class="choices">${(step.choices || []).map(choiceHTML).join("")}</div>
+    ${skipHTML()}
   </div>`;
 }
 
@@ -185,6 +187,7 @@ function renderBlend(step, state) {
     ${state.showSwoop ? swoopHTML(!!state.ready) : ""}
     ${choices}
     ${star}
+    ${skipHTML()}
   </div>`;
 }
 
@@ -223,11 +226,10 @@ function confetti(big) {
 
 function armIdle() {
   clearTimeout(Game.idle);
-  Game.idle = setTimeout(() => {
-    if (Game.lock || Game.nudged || Game.screen !== "play") return;
-    Game.nudged = true;
-    replay();
-  }, 14000);
+}
+
+function skipHTML() {
+  return '<button type="button" id="skip" class="skip-btn" aria-label="Next">Next</button>';
 }
 
 async function runAudio(step, my) {
@@ -314,8 +316,7 @@ async function presentStep() {
   await runAudio(step, my);
   clearTimeout(failsafe);
   if (my !== Game.token) return;
-  if (step.type === "choice") revealChoices();
-  armIdle();
+  if (step.type === "model") nextStep();
 }
 
 async function presentBlend(step, my) {
@@ -343,10 +344,10 @@ async function presentBlend(step, my) {
     if (my !== Game.token) return;
     await AudioBus.whoosh();
     await AudioBus.playClip("w:" + step.word);
-    await AudioBus.speak(step.word);
     if (my !== Game.token) return;
     const lit = step.letters.map((_, index) => index);
     renderBlend(step, { litLetters: lit, next: -1, showSwoop: false, showChoices: true, done: true });
+    if (my === Game.token) nextStep();
     return;
   }
   renderBlend(step, {
@@ -410,20 +411,10 @@ async function onSwoop() {
   clearTimeout(Game.idle);
   try {
     await AudioBus.whoosh();
-    if (step.mode === "you") {
-      for (let i = 0; i < step.letters.length; i += 1) {
-        if (my !== Game.token) return;
-        await AudioBus.playClip(soundId(step.letters[i]));
-        await AudioBus.wait(70);
-      }
-      if (my !== Game.token) return;
-      step._line = "What word is it?";
-      await AudioBus.speak("What word is it?");
-    } else {
-      await AudioBus.playClip("w:" + step.word);
-      await AudioBus.speak(step.word);
-      step._line = step.word;
-    }
+    await AudioBus.playClip("w:" + step.word);
+    if (my !== Game.token) return;
+    step._line = "What word is it?";
+    if (step.mode === "you") await AudioBus.speak("What word is it?");
     if (my !== Game.token || Game.step !== step) return;
     Game.phase = "pick";
     renderBlend(step, {
@@ -544,7 +535,8 @@ async function onMic() {
     return;
   }
   if (step.voice === "word" && step.phoneme && LETTERS[step.phoneme] && matches(alts, LETTERS[step.phoneme].accept)) {
-    AudioBus.speak("Yes! " + LETTERS[step.phoneme].said + ". Now tap the picture.");
+    AudioBus.playClip(soundId(step.phoneme));
+    AudioBus.speak("Yes! Now tap the picture.");
     return;
   }
   AudioBus.speak("Let's try tapping!");
@@ -636,28 +628,12 @@ function replay() {
   }
   const step = Game.step;
   if (!step) return;
-  if (step.type === "blend" && Game.phase === "pick" && step.mode === "you") {
-    const my = ++Game.token;
-    (async () => {
-      AudioBus.arm();
-      for (let i = 0; i < step.letters.length; i += 1) {
-        if (my !== Game.token) return;
-        await AudioBus.playClip(soundId(step.letters[i]));
-        await AudioBus.wait(70);
-      }
-      if (my !== Game.token) return;
-      await AudioBus.speak("What word is it?");
-    })();
+  AudioBus.stop();
+  if (step.word && (step.type === "blend" || step.type === "read" || step.type === "spell")) {
+    AudioBus.playClip("w:" + step.word);
     return;
   }
-  if (step.type === "blend") {
-    AudioBus.speak(step._line || "Tap each sound. Then swoop.");
-    return;
-  }
-  const my = ++Game.token;
-  runAudio(step, my).then(() => {
-    if (my === Game.token) revealChoices();
-  });
+  AudioBus.speak(step._line || step.speech || "Tap the picture.");
 }
 
 function renderMap() {
@@ -895,6 +871,7 @@ function presentRead(step) {
     <button type="button" class="big-word" id="help" aria-label="Hear the sounds">${wordHTML(step.letters)}</button>
     <div class="choices">${(step.choices || []).map(choiceHTML).join("")}</div>
     ${star}
+    ${skipHTML()}
   </div>`;
   updateMic(step);
 }
@@ -918,6 +895,7 @@ function presentSpell(step) {
     <div class="slots">${slots}</div>
     <div class="bank">${bank}</div>
     ${star}
+    ${skipHTML()}
   </div>`;
   updateMic(step);
 }
@@ -967,6 +945,7 @@ function presentSentence(step) {
     <div class="sentence">${chips}</div>
     ${choices}
     ${star}
+    ${skipHTML()}
   </div>`;
   updateMic(step);
 }
@@ -1035,7 +1014,12 @@ function handleButton(button) {
   if (button.id === "home") return showPicker();
   if (button.id === "mic") return onMic();
   if (button.id === "play") return onPlay();
-  if (button.id === "next") return nextStep();
+  if (button.id === "next" || button.id === "skip") {
+    Game.lock = false;
+    Game.token += 1;
+    AudioBus.stop();
+    return nextStep();
+  }
   if (button.id === "wedo") return onWedo();
   if (button.id === "swoop") return onSwoop();
   if (button.id === "help") return onHelp();
@@ -1129,8 +1113,9 @@ document.addEventListener("pointerup", (event) => {
     if (!moved || onSlots) tryPlace(letter);
     return;
   }
-  if (!button || button.id === "grown" || moved) return;
-  handleButton(button);
+  if (!button || button.id === "grown") return;
+  const released = event.target.closest("button");
+  if (released === button || !moved) handleButton(button);
 }, true);
 
 document.addEventListener("pointercancel", () => {

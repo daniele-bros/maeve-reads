@@ -54,6 +54,7 @@ const AudioBus = {
   stop() {
     this.stopped = true;
     this.abortListen();
+    if (this._endPlay) this._endPlay(false);
     try {
       speechSynthesis.cancel();
     } catch (err) {
@@ -84,40 +85,51 @@ const AudioBus = {
     return "audio/phonemes/" + id + ".mp3";
   },
 
-  fallback(id) {
-    const map = {
-      s: "sss", a: "aaa", t: "t", p: "p", i: "iii", n: "nnn",
-      m: "mmm", f: "fff", h: "hhh", k: "k", d: "d", g: "g", b: "b",
-      u: "uh", o: "aw", at: "at", og: "og", un: "un", ig: "ig", us: "us",
-    };
-    if (id.indexOf("w:") === 0) return id.slice(2);
-    return map[id] || id;
+  /* A whole utterance that is one letter, or a sentence that names a letter
+     ("say k", "says c"). The words "a" and "I" are allowed. */
+  hasBareLetter(text) {
+    const raw = String(text || "").trim();
+    if (/^[a-zA-Z][.!?]?$/.test(raw)) return true;
+    const tokens = raw.toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean);
+    const allowed = { a: 1, i: 1 };
+    return tokens.some((token) => token.length === 1 && !allowed[token]);
   },
 
-  playUrl(url) {
+  playUrl(url, maxMs) {
+    if (this._endPlay) this._endPlay(false);
     return new Promise((resolve) => {
       const audio = new Audio(url);
+      audio.loop = false;
       this.audio = audio;
       let done = false;
       const finish = (ok) => {
         if (done) return;
         done = true;
+        clearTimeout(timer);
+        if (this._endPlay === finish) this._endPlay = null;
         resolve(ok);
       };
+      this._endPlay = finish;
+      const timer = setTimeout(() => {
+        try { audio.pause(); } catch (err) { /* ignore */ }
+        finish(true);
+      }, maxMs || 1600);
       audio.onended = () => finish(true);
       audio.onerror = () => finish(false);
-      audio.play().catch(() => finish(false));
+      const play = audio.play();
+      if (play && play.catch) play.catch(() => finish(false));
     });
   },
 
   async playClip(id) {
-    const ok = await this.playUrl(this.clipUrl(id));
-    if (!ok && !this.stopped) await this.speak(this.fallback(id));
+    const word = String(id).indexOf("w:") === 0;
+    await this.playUrl(this.clipUrl(id), word ? 1500 : 600);
   },
 
   speak(text) {
     return new Promise((resolve) => {
-      if (!text || !window.speechSynthesis) {
+      if (!text || !window.speechSynthesis || this.hasBareLetter(text)) {
+        if (text && this.hasBareLetter(text)) this.blockedLetters = (this.blockedLetters || 0) + 1;
         resolve();
         return;
       }
@@ -128,10 +140,6 @@ const AudioBus = {
         done = true;
         const pip = document.getElementById("pip");
         if (pip) pip.classList.remove("talking");
-        if (this.keepAlive) {
-          clearInterval(this.keepAlive);
-          this.keepAlive = null;
-        }
         resolve();
       };
       try {
@@ -140,8 +148,9 @@ const AudioBus = {
         /* ignore */
       }
       const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = 0.82;
-      utter.pitch = 1.08;
+      const words = String(text).trim().split(/\s+/).length;
+      utter.rate = words <= 2 ? 1 : 0.95;
+      utter.pitch = 1.05;
       utter.lang = "en-US";
       if (!this.voice) this.voice = this.pickVoice();
       if (this.voice) utter.voice = this.voice;
@@ -149,16 +158,10 @@ const AudioBus = {
       utter.onerror = finish;
       const pip = document.getElementById("pip");
       if (pip) pip.classList.add("talking");
-      speechSynthesis.speak(utter);
-      this.keepAlive = setInterval(() => {
-        try {
-          if (!speechSynthesis.speaking) return;
-          speechSynthesis.resume();
-        } catch (err) {
-          /* ignore */
-        }
-      }, 4000);
-      setTimeout(finish, 12000);
+      window.setTimeout(() => {
+        try { speechSynthesis.speak(utter); } catch (err) { finish(); }
+      }, 40);
+      setTimeout(finish, 5000);
     });
   },
 
