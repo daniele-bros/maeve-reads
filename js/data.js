@@ -107,6 +107,13 @@ const PATH2 = [
   { id: "read", label: "Match", icon: "🖼️" },
   { id: "spell", label: "Build", icon: "🔤" },
   { id: "stories", label: "Stories", icon: "📕" },
+  { id: "pop", label: "Pop", icon: "🎈", free: true },
+  { id: "feed", label: "Feed", icon: "👾", free: true },
+  { id: "train", label: "Train", icon: "🚂", free: true },
+  { id: "hop", label: "Hop", icon: "🐸", free: true },
+  { id: "fish", label: "Fish", icon: "🎣", free: true },
+  { id: "bubble", label: "Bubbles", icon: "🫧", free: true },
+  { id: "mystery", label: "Mystery", icon: "🎁", free: true },
 ];
 
 const RHYMES = [
@@ -373,6 +380,7 @@ const Session = {
     if (skill === "read") return this.readSet();
     if (skill === "spell") return this.spellSet();
     if (skill === "stories") return this.storySet();
+    if (typeof PlaySets !== "undefined" && PlaySets.has(skill)) return PlaySets.build(skill);
     if (skill === "rhyme") return this.rhyme();
     if (skill === "first") return this.first();
     if (skill === "robot1" || skill === "robot2") return this.robot(skill);

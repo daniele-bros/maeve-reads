@@ -48,13 +48,15 @@ function nodeDone(node) {
 }
 
 function isUnlocked(index) {
+  const node = activePath()[index];
+  if (node && node.free) return true;
   if (index <= 0) return true;
   return nodeDone(activePath()[index - 1]);
 }
 
 function currentIndex() {
   const path = activePath();
-  return path.findIndex((node, index) => isUnlocked(index) && !nodeDone(node));
+  return path.findIndex((node, index) => !node.free && isUnlocked(index) && !nodeDone(node));
 }
 
 function hereLine() {
@@ -287,6 +289,14 @@ async function presentStep() {
     if (!Game.shot && step.mode !== "model") {
       await runAudio(step, my);
       if (my === Game.token) armIdle();
+    }
+    return;
+  }
+  if (step.type === "play") {
+    PlaySets.present(step);
+    renderChrome();
+    if (!Game.shot) {
+      await runAudio(step, my);
     }
     return;
   }
@@ -1047,6 +1057,7 @@ function handleButton(button) {
     return;
   }
   if (button.classList.contains("try")) return startSkill(button.dataset.go);
+  if (button.classList.contains("balloon") || button.classList.contains("bubble")) return PlaySets.tap(button);
   if (button.classList.contains("choice")) return onChoice(button.dataset.key);
   if (button.classList.contains("blend-letter")) return onLetterTap(Number(button.dataset.i));
   if (button.classList.contains("node")) return onNode(Number(button.dataset.i));
@@ -1076,7 +1087,7 @@ document.addEventListener("pointerdown", (event) => {
     y: event.clientY,
     button,
     moved: false,
-    drag: !!(button && button.classList.contains("bank-letter")),
+    drag: !!(button && (button.classList.contains("bank-letter") || button.classList.contains("piece"))),
   };
   if (button) button.classList.add("pressed");
   if (press.drag) {
@@ -1106,6 +1117,10 @@ document.addEventListener("pointerup", (event) => {
   if (ghost) {
     ghost.remove();
     ghost = null;
+  }
+  if (dragging && button && button.classList.contains("piece")) {
+    PlaySets.drop(button, event);
+    return;
   }
   if (dragging) {
     const under = document.elementFromPoint(event.clientX, event.clientY);

@@ -183,6 +183,12 @@ header {
 #pip.talking .smile { display: none; }
 
 #pip.yay #pip-svg { animation: yay 0.55s ease-in-out infinite; }
+#pip.goofy #pip-svg { animation: goof 0.55s ease-in-out; }
+
+@keyframes goof {
+  40% { transform: rotate(12deg) scale(1.08, 0.9); }
+  70% { transform: rotate(-10deg) scale(0.92, 1.1); }
+}
 
 @keyframes bob {
   50% { transform: translateY(-7px); }
@@ -357,6 +363,60 @@ h1 {
 }
 
 .star-next:active { transform: translateY(4px); }
+
+.balloon, .bubble {
+  width: 108px;
+  height: 108px;
+  min-width: 84px;
+  min-height: 84px;
+  border-radius: 50%;
+  font-size: 48px;
+  color: #3d2b24;
+  animation: floaty 2.2s ease-in-out infinite;
+}
+.balloon { background: #ff9eb5; }
+.balloon.b1, .bubble.b1 { background: #8ed0ff; animation-delay: 0.25s; }
+.balloon.b2, .bubble.b2 { background: #ffe08a; animation-delay: 0.5s; }
+.bubble { background: rgba(255, 255, 255, 0.85); border: 4px solid #b9e7ff; }
+.balloon.popped, .bubble.popped { transform: scale(0); }
+
+@keyframes floaty {
+  50% { transform: translateY(-14px) scale(1.04); }
+}
+
+.piece {
+  min-width: 88px;
+  min-height: 80px;
+  padding: 8px 14px;
+  border-radius: 22px;
+  background: white;
+  box-shadow: 0 6px 0 var(--line);
+  font-size: 36px;
+  touch-action: none;
+}
+.piece.used { visibility: hidden; }
+.pieces, .train, .path, .gifts, .sky-play, .pond { display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap; }
+.car, .stone, .gift, .net, .monster {
+  min-width: 92px;
+  min-height: 92px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.car, .stone { width: 96px; height: 96px; border: 4px dashed #e0cba8; font-size: 42px; background: rgba(255,255,255,0.7); }
+.monster { width: 200px; height: 150px; background: #d8f8c8; flex-direction: column; font-size: 64px; }
+.want { font-size: 42px; }
+.sea { position: relative; width: min(640px, 100%); min-height: 220px; }
+.fish { position: absolute; }
+.fish.f0 { left: 6%; top: 16%; }
+.fish.f1 { left: 38%; top: 48%; }
+.fish.f2 { right: 8%; top: 18%; }
+.net { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 130px; background: #d7f4ff; font-size: 48px; }
+.gift { font-size: 72px; background: transparent; }
+.prize { font-size: 64px; opacity: 0; transform: scale(0.5); }
+.prize.show { opacity: 1; transform: scale(1); transition: 0.3s; }
+.snapped { animation: yay 0.4s ease; background: #fff4cc; }
 
 .skip-btn {
   min-width: 96px;
