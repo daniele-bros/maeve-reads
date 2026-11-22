@@ -17,6 +17,7 @@ const Progress = {
     raw.stickers = raw.stickers || [];
     raw.stars = raw.stars || 0;
     if (typeof raw.mic !== "boolean") raw.mic = true;
+    if (raw.chapter !== 1 && raw.chapter !== 2) raw.chapter = 2;
     this.data = raw;
     this.save();
   },

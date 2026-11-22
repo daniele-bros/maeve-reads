@@ -30,13 +30,19 @@ PHONEMES = {
     "un": "un",
     "ig": "ig",
     "us": "us",
+    "e": "eh",
+    "r": "rrr",
 }
 
 WORDS = """
 cat hat bat dog log sun bun pig wig bee tree moon spoon fish dish ball cake
 snake sock mouse bus nest book car apple tiger igloo nose sat pat tap pin tin
 nap sip pan ant frog star fan
+cap can pet pen ten net hen rat ran ram mat map mad dad sad ham kid sit bed
+red sam hit the a is
 """.split()
+
+WORD_TEXT = {"a": "uh"}
 
 
 async def save(text, path):
@@ -70,18 +76,22 @@ async def main():
     for key, text in PHONEMES.items():
         jobs.append((text, os.path.join(ph_dir, key + ".mp3")))
     for word in WORDS:
-        jobs.append((word, os.path.join(w_dir, word + ".mp3")))
+        jobs.append((WORD_TEXT.get(word, word), os.path.join(w_dir, word + ".mp3")))
 
     sem = asyncio.Semaphore(6)
+    made = []
 
     async def one(text, path):
         async with sem:
+            if os.path.exists(path) and os.path.getsize(path) > 500:
+                return
             await save(text, path)
+            made.append(path)
             print("saved", os.path.relpath(path, ROOT), flush=True)
 
     await asyncio.gather(*(one(t, p) for t, p in jobs))
 
-    for _, path in jobs:
+    for path in made:
         trimmed = path + ".trim.mp3"
         cmd = [
             "ffmpeg", "-y", "-loglevel", "error", "-i", path,

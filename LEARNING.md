@@ -1,6 +1,6 @@
-# Why Chapter 1 is built this way
+# Why the lessons are built this way
 
-Maeve is 4. Chapter 1 is the foundation of word reading: hear sounds in words, learn a few letter sounds, and blend them into real words. Later chapters (more letters, then little stories) stay locked until this is solid.
+Maeve is 4. Chapter 1 is the foundation: hear sounds in words, learn a few letter sounds, and blend the first words. Chapter 2 is where she sounds words out and reads them. Chapter 3 (little stories) stays locked. Chapter 1 does not have to be finished before Chapter 2. The chapter picker shows where she is, and a grown-up can switch.
 
 ## The research underneath
 
@@ -34,6 +34,20 @@ Letter **sounds** are taught, not letter names. Names ("ess") do not blend. "suh
 
 When she says the sound or the word, she is practicing the link between grapheme and phoneme and the blend itself. That spoken response is part of learning the word, not a test of the microphone. Recognition of a 4-year-old is unreliable, so a miss from the mic is never scored as a reading error. Tapping is always there. A clear spoken answer gets a bigger celebration because she did the full thing: see it, say it.
 
-## What this chapter does not do
+## Chapter 2: sounding out and reading words
 
-It does not teach irregular high-frequency words (the, a, I, said). It does not ask her to guess from the picture before she has blended. Chapters 2 and 3 are where more correspondences, harder blending, and little decodable stories belong.
+Same ingredients as Chapter 1: systematic synthetic phonics, cumulative review, I do / we do / you do, gentle scaffolding, and mastery (about 4 of the last 5 first tries) before the next game in the chapter glows.
+
+**Next sounds.** Jolly Phonics group 2, a couple at a time, mixed with review of s, a, t, p, i, n: **c** and **k** (one sound, /k/, as in cat and kite), then **e**, **h**, **r**, **m**, and **d**. Lowercase. Each has a keyword and an action. Clips stay free of a schwa: stretched sounds where that works (`eh`, `rrr`, `mmm`) and a short burst for stops.
+
+**Blending, then less help.** Early words (cat, cap, can, pet, ten, and a review of sat) still light up one sound at a time. Later words (hat, rat, hen, red, ran, pen) stay on the screen as a whole. She can swoop right away. Tapping a letter only plays that sound if she wants help.
+
+**Reading and spelling.** Match activities put close words side by side (sat / sit / mat, cat / cap / can, pin / pan / pen) so she has to look at every letter. Word building asks her to hear a word and tap, or drag, the letters into it. That is encoding: turning sounds back into letters, which supports the map from print to speech.
+
+**Tiny sentences.** At the end she meets three tricky words that are not fully sounded out yet: **a**, **the**, and **is**. Then short lines that use only taught sounds plus those words: "a red hat", "Sam sat", "the cat is sad", "Dad is sad", "the hen sat". She reads, can tap a word for help, and picks the picture. The picture is the reward for reading, not a clue given first.
+
+**Saying it.** The microphone is there for letter sounds, blended words, and these sentences. A miss from the recognizer is never scored as a reading error. Tapping is always the way through.
+
+## What we are not doing yet
+
+Chapter 3 is still ahead: longer decodable stories, and more tricky words beyond a, the, and is. We still do not ask her to guess a word from the picture before she has looked at the letters.

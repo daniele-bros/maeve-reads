@@ -32,18 +32,34 @@ function esc(value) {
   }[ch]));
 }
 
+function soundId(letter) {
+  if (LETTERS[letter] && LETTERS[letter].clip) return LETTERS[letter].clip;
+  return letter;
+}
+
+function activePath() {
+  return Progress.data.chapter === 1 ? PATH : PATH2;
+}
+
 function nodeDone(node) {
+  if (!node) return false;
   if (node.id === "robot") return Progress.isMastered("robot1") && Progress.isMastered("robot2");
   return Progress.isMastered(node.id);
 }
 
 function isUnlocked(index) {
   if (index <= 0) return true;
-  return nodeDone(PATH[index - 1]);
+  return nodeDone(activePath()[index - 1]);
 }
 
 function currentIndex() {
-  return PATH.findIndex((node, index) => isUnlocked(index) && !nodeDone(node));
+  const path = activePath();
+  return path.findIndex((node, index) => isUnlocked(index) && !nodeDone(node));
+}
+
+function hereLine() {
+  if ((Progress.data.chapter || 2) === 1) return "You are here. Chapter 1. First sounds.";
+  return "You are here. Chapter 2. We read words.";
 }
 
 function norm(text) {
@@ -108,13 +124,15 @@ function swoopHTML(ready) {
 
 function updateMic(step) {
   const mic = document.getElementById("mic");
-  const show = !!(step && step.voice && micOn() && (step.type !== "blend" || Game.phase === "pick"));
+  const blendPick = step && step.type === "blend" && Game.phase === "pick";
+  const sayTypes = step && (step.type === "choice" || step.type === "wedo" || step.type === "read" || step.type === "sentence" || step.type === "spell");
+  const show = !!(step && step.voice && micOn() && (sayTypes || blendPick) && !(step.type === "sentence" && step.mode === "model" && !(step.choices || []).length));
   mic.hidden = !show;
 }
 
 function renderChrome() {
   document.getElementById("starcount").textContent = String(Progress.data.stars || 0);
-  document.getElementById("home").hidden = Game.screen === "start" || Game.screen === "map";
+  document.getElementById("home").hidden = Game.screen === "start" || Game.screen === "picker";
   document.body.dataset.screen = Game.screen;
 }
 
@@ -246,6 +264,42 @@ async function presentStep() {
     renderChrome();
     return;
   }
+  if (step.type === "read") {
+    presentRead(step);
+    renderChrome();
+    if (!Game.shot) {
+      await runAudio(step, my);
+      if (my === Game.token) armIdle();
+    }
+    return;
+  }
+  if (step.type === "spell") {
+    Game.spell = {
+      word: step.word,
+      filled: step.mode === "model" ? step.letters.slice() : [],
+      left: step.mode === "model" ? [] : (step.bank || []).slice(),
+      misses: 0,
+    };
+    presentSpell(step);
+    renderChrome();
+    if (!Game.shot && step.mode !== "model") {
+      await runAudio(step, my);
+      if (my === Game.token) armIdle();
+    }
+    return;
+  }
+  if (step.type === "sentence") {
+    presentSentence(step);
+    renderChrome();
+    if (!Game.shot) {
+      await runAudio(step, my);
+      if (my === Game.token && step.mode === "model") {
+        /* star is already on screen */
+      }
+      if (my === Game.token) armIdle();
+    }
+    return;
+  }
   Game.phase = "pick";
   renderStep(step);
   updateMic(step);
@@ -265,8 +319,9 @@ async function presentStep() {
 }
 
 async function presentBlend(step, my) {
+  const open = step.fade === "open" && step.mode === "you";
   Game.phase = "tap";
-  Game.blend = { next: 0, lit: [], ready: false };
+  Game.blend = { next: open ? step.letters.length : 0, lit: [], ready: open, open };
   updateMic(step);
   if (Game.shot) {
     const all = step.letters.map((_, index) => index);
@@ -282,7 +337,7 @@ async function presentBlend(step, my) {
       const lit = [];
       for (let j = 0; j <= i; j += 1) lit.push(j);
       renderBlend(step, { litLetters: lit, next: -1, showSwoop: false, showChoices: false });
-      await AudioBus.playClip(step.letters[i]);
+      await AudioBus.playClip(soundId(step.letters[i]));
       await AudioBus.wait(160);
     }
     if (my !== Game.token) return;
@@ -294,7 +349,13 @@ async function presentBlend(step, my) {
     renderBlend(step, { litLetters: lit, next: -1, showSwoop: false, showChoices: true, done: true });
     return;
   }
-  renderBlend(step, { litLetters: [], next: 0, showSwoop: true, showChoices: false, ready: false });
+  renderBlend(step, {
+    litLetters: [],
+    next: open ? -1 : 0,
+    showSwoop: true,
+    showChoices: false,
+    ready: open,
+  });
   await AudioBus.speak(step._line);
   if (my === Game.token) armIdle();
 }
@@ -307,14 +368,26 @@ function onLetterTap(index) {
   const step = Game.step;
   if (!step || step.type !== "blend" || step.mode === "model" || Game.lock) return;
   if (Game.phase === "pick") return;
+  if (Game.blend.open) {
+    AudioBus.playClip(soundId(step.letters[index]));
+    if (Game.blend.lit.indexOf(index) === -1) Game.blend.lit.push(index);
+    renderBlend(step, {
+      litLetters: litNow(),
+      next: -1,
+      showSwoop: true,
+      showChoices: false,
+      ready: true,
+    });
+    return;
+  }
   if (!Game.blend || Game.blend.next !== index) {
-    AudioBus.playClip(step.letters[index]);
+    AudioBus.playClip(soundId(step.letters[index]));
     return;
   }
   Game.blend.lit.push(index);
   Game.blend.next += 1;
   Game.blend.ready = Game.blend.next >= step.letters.length;
-  AudioBus.playClip(step.letters[index]);
+  AudioBus.playClip(soundId(step.letters[index]));
   renderBlend(step, {
     litLetters: litNow(),
     next: Game.blend.ready ? -1 : Game.blend.next,
@@ -327,9 +400,9 @@ function onLetterTap(index) {
 async function onSwoop() {
   const step = Game.step;
   if (!step || step.type !== "blend" || Game.lock || Game.phase === "pick") return;
-  if (!Game.blend || !Game.blend.ready) {
+    if (!Game.blend || !Game.blend.ready) {
     const next = Game.blend ? Game.blend.next : 0;
-    if (step.letters[next]) await AudioBus.playClip(step.letters[next]);
+    if (step.letters[next]) await AudioBus.playClip(soundId(step.letters[next]));
     return;
   }
   Game.lock = true;
@@ -340,7 +413,7 @@ async function onSwoop() {
     if (step.mode === "you") {
       for (let i = 0; i < step.letters.length; i += 1) {
         if (my !== Game.token) return;
-        await AudioBus.playClip(step.letters[i]);
+        await AudioBus.playClip(soundId(step.letters[i]));
         await AudioBus.wait(70);
       }
       if (my !== Game.token) return;
@@ -451,6 +524,11 @@ async function onMic() {
     AudioBus.speak("Let's try tapping!");
     return;
   }
+  if (step.type === "spell") {
+    if (matches(alts, step.accept || [step.answer])) AudioBus.speak("Yes! Now tap the letters.");
+    else AudioBus.speak("Let's try tapping!");
+    return;
+  }
   if (matches(alts, step.accept || [step.answer])) {
     if (step.type === "wedo") {
       Progress.data.stars = (Progress.data.stars || 0) + 1;
@@ -476,7 +554,7 @@ function onWedo() {
   const step = Game.step;
   if (!step || Game.lock) return;
   Game.lock = true;
-  AudioBus.playClip(step.letter || "s").then(() => {
+  AudioBus.playClip(soundId(step.letter || "s")).then(() => {
     AudioBus.chime(false);
     AudioBus.speak("Yes!");
     setTimeout(() => {
@@ -511,9 +589,10 @@ function celebrate() {
   Progress.data.stars = (Progress.data.stars || 0) + 1;
   Progress.save();
   Game.screen = "cele";
-  const finished = PATH.every(nodeDone);
+  const finished = activePath().every(nodeDone);
+  const chapterName = Progress.data.chapter === 1 ? "Chapter 1" : "Chapter 2";
   let line = "Great playing, Maeve! You earned a sticker. We can rest, or play some more.";
-  if (finished && now && !was) line = "You did it, Maeve! Chapter 1 is complete! We can rest now.";
+  if (finished && now && !was) line = "You did it, Maeve! " + chapterName + " is complete! We can rest now.";
   else if (now && !was) line = "You did it, Maeve! You earned a sticker. We can rest now.";
   document.getElementById("pip").classList.add("yay");
   updateMic(null);
@@ -524,12 +603,13 @@ function celebrate() {
 }
 
 function onMore() {
-  const idx = PATH.findIndex((node) => node.id === Game.node);
-  if (idx >= 0 && nodeDone(PATH[idx]) && idx < PATH.length - 1) {
-    startSkill(PATH[idx + 1].id);
+  const path = activePath();
+  const idx = path.findIndex((node) => node.id === Game.node);
+  if (idx >= 0 && nodeDone(path[idx]) && idx < path.length - 1) {
+    startSkill(path[idx + 1].id);
     return;
   }
-  if (idx >= 0 && !nodeDone(PATH[idx])) {
+  if (idx >= 0 && !nodeDone(path[idx])) {
     startSkill(Game.node);
     return;
   }
@@ -540,6 +620,10 @@ function replay() {
   AudioBus.unlock();
   if (Game.screen === "start") {
     AudioBus.speak("Tap the big button to play.");
+    return;
+  }
+  if (Game.screen === "picker") {
+    AudioBus.speak(hereLine());
     return;
   }
   if (Game.screen === "map") {
@@ -558,7 +642,7 @@ function replay() {
       AudioBus.arm();
       for (let i = 0; i < step.letters.length; i += 1) {
         if (my !== Game.token) return;
-        await AudioBus.playClip(step.letters[i]);
+        await AudioBus.playClip(soundId(step.letters[i]));
         await AudioBus.wait(70);
       }
       if (my !== Game.token) return;
@@ -577,8 +661,12 @@ function replay() {
 }
 
 function renderMap() {
+  const path = activePath();
   const current = currentIndex();
-  const nodes = PATH.map((node, index) => {
+  const chapter = Progress.data.chapter === 1 ? 1 : 2;
+  const title = chapter === 1 ? "Chapter 1" : "Chapter 2";
+  const sub = chapter === 1 ? "First sounds" : "Read words";
+  const nodes = path.map((node, index) => {
     const unlocked = isUnlocked(index);
     const done = nodeDone(node);
     const cls = [
@@ -597,24 +685,63 @@ function renderMap() {
     : '<span class="empty">Stickers will show up here.</span>';
   main.innerHTML = `<div class="map">
     <div class="map-head">
-      <h2>Chapter 1</h2>
-      <p>First sounds</p>
+      <h2>${title}</h2>
+      <p>${sub}</p>
     </div>
     <div class="nodes">${nodes}</div>
-    <div class="soon">
-      <button type="button" class="soon-card" aria-label="Chapter 2, locked">
-        <div class="lock">🔒</div>
-        <h3>Chapter 2</h3>
-        <p>More letters</p>
-      </button>
-      <button type="button" class="soon-card" aria-label="Chapter 3, locked">
-        <div class="lock">🔒</div>
-        <h3>Chapter 3</h3>
-        <p>Little stories</p>
-      </button>
-    </div>
     <div class="stickers"><b>Stickers</b>${stickers}</div>
   </div>`;
+}
+
+function renderPicker() {
+  const here = Progress.data.chapter || 2;
+  const cards = [
+    { n: 1, icon: "👂", name: "Sounds", note: "Chapter 1" },
+    { n: 2, icon: "📖", name: "Words", note: "Chapter 2" },
+    { n: 3, icon: "🔒", name: "Stories", note: "Chapter 3" },
+  ].map((card) => {
+    const cls = ["chapter-card", card.n === here ? "here" : "", card.n === 3 ? "locked" : ""].filter(Boolean).join(" ");
+    const badge = card.n === here ? '<div class="here-badge">You are here</div>' : "";
+    return `<button type="button" class="${cls}" data-chapter="${card.n}" aria-label="${esc(card.note)} ${esc(card.name)}${card.n === here ? ", you are here" : ""}">
+      ${badge}
+      <span class="num">${card.n}</span>
+      <span class="ico">${card.icon}</span>
+      <h2>${esc(card.name)}</h2>
+    </button>`;
+  }).join("");
+  main.innerHTML = `<div class="picker">${cards}</div>`;
+}
+
+function showPicker(opts) {
+  closeGrownup();
+  Game.screen = "picker";
+  Game.token += 1;
+  AudioBus.stop();
+  document.getElementById("pip").classList.remove("yay");
+  updateMic(null);
+  renderPicker();
+  renderChrome();
+  let line = hereLine();
+  if (opts && opts.hello) line = "Hi Maeve! I am Pip. " + line;
+  if (!Game.shot) AudioBus.speak(line);
+}
+
+function enterChapter(n) {
+  if (n === 3) {
+    AudioBus.speak("Chapter 3 is coming soon.");
+    const card = document.querySelector('.chapter-card.locked');
+    if (card) {
+      card.classList.remove("wiggle");
+      void card.offsetWidth;
+      card.classList.add("wiggle");
+    }
+    return;
+  }
+  Progress.data.chapter = n;
+  Progress.save();
+  showMap({
+    speak: n === 1 ? "Chapter 1. First sounds. Tap the glowing game." : "Chapter 2. Let's read words. Tap the glowing game.",
+  });
 }
 
 function showMap(opts) {
@@ -651,12 +778,7 @@ function freshPlayer() {
 
 function onPlay() {
   AudioBus.unlock();
-  if (freshPlayer()) {
-    Game.hello = true;
-    startSkill("rhyme");
-    return;
-  }
-  showMap({ speak: "Hi Maeve! You are back. Tap the glowing game." });
+  showPicker({ hello: freshPlayer() });
 }
 
 function startSkill(id) {
@@ -687,7 +809,7 @@ function startSkill(id) {
 }
 
 function onNode(index) {
-  const node = PATH[index];
+  const node = activePath()[index];
   if (!node) return;
   if (!isUnlocked(index)) {
     AudioBus.speak("That game is still sleeping. Tap the glowing one.");
@@ -711,11 +833,12 @@ function skillLine(id, label) {
 
 function openGrownup() {
   Game.resetArm = false;
-  const sounds = ["s", "a", "t", "p", "i", "n"].map((id) => skillLine(id, id + " · " + LETTERS[id].said)).join("");
+  const sounds = LETTER_ORDER.map((id) => skillLine(id, id + " · " + LETTERS[id].said)).join("");
   const ears = ["rhyme", "first", "robot1", "robot2", "sat", "words"]
+    .concat(PATH2.map((node) => node.id))
     .map((id) => skillLine(id, id))
     .join("");
-  const tries = PATH.map((node) => `<button type="button" class="try" data-go="${esc(node.id)}">${node.icon} ${esc(node.label)}</button>`).join("");
+  const tries = PATH.concat(PATH2).map((node) => `<button type="button" class="try" data-go="${esc(node.id)}">${node.icon} ${esc(node.label)}</button>`).join("");
   const micNote = AudioBus.micSupported()
     ? "The microphone uses the browser's built-in speech recognition. This game does not record, save, or upload her voice. Chrome may send audio to Google to recognize speech."
     : "This browser has no speech recognition. Tapping still works everywhere.";
@@ -757,6 +880,122 @@ function closeGrownup() {
   overlay.innerHTML = "";
 }
 
+function wordHTML(letters) {
+  return letters.map((letter) => `<span>${esc(letter)}</span>`).join("");
+}
+
+function presentRead(step) {
+  Game.phase = "pick";
+  const star = step.mode === "model"
+    ? '<button class="star-next" id="next" type="button" aria-label="Next">★</button>'
+    : "";
+  main.innerHTML = `<div class="play">
+    <div class="pips">${pipsHTML()}</div>
+    <p class="prompt" id="prompt">${esc(step._line || step.speech || "")}</p>
+    <button type="button" class="big-word" id="help" aria-label="Hear the sounds">${wordHTML(step.letters)}</button>
+    <div class="choices">${(step.choices || []).map(choiceHTML).join("")}</div>
+    ${star}
+  </div>`;
+  updateMic(step);
+}
+
+function presentSpell(step) {
+  const slots = step.letters.map((letter, index) => {
+    const got = Game.spell.filled[index];
+    return `<div class="slot${got ? " on" : ""}">${got ? esc(got) : ""}</div>`;
+  }).join("");
+  const bank = Game.spell.left.map((letter, index) => {
+    const need = step.letters[Game.spell.filled.length];
+    const hint = Game.spell.misses >= 2 && letter === need ? " show-me" : "";
+    return `<button type="button" class="bank-letter${hint}" data-letter="${esc(letter)}" data-bank="${index}" aria-label="${esc(letter)}">${esc(letter)}</button>`;
+  }).join("");
+  const star = step.mode === "model"
+    ? '<button class="star-next" id="next" type="button" aria-label="Next">★</button>'
+    : "";
+  main.innerHTML = `<div class="play">
+    <div class="pips">${pipsHTML()}</div>
+    <p class="prompt" id="prompt">${esc(step._line || step.speech || "")}</p>
+    <div class="slots">${slots}</div>
+    <div class="bank">${bank}</div>
+    ${star}
+  </div>`;
+  updateMic(step);
+}
+
+function tryPlace(letter) {
+  const step = Game.step;
+  if (!step || step.type !== "spell" || step.mode === "model" || Game.lock || !Game.spell) return;
+  const need = step.letters[Game.spell.filled.length];
+  if (letter === need) {
+    Game.spell.filled.push(letter);
+    const at = Game.spell.left.indexOf(letter);
+    if (at >= 0) Game.spell.left.splice(at, 1);
+    AudioBus.playClip(soundId(letter));
+    if (Game.spell.filled.length === step.letters.length) {
+      presentSpell(step);
+      succeed(step, { spoken: false, clean: Game.spell.misses === 0 });
+    } else {
+      presentSpell(step);
+    }
+    return;
+  }
+  Game.spell.misses += 1;
+  const buttons = Array.from(document.querySelectorAll(".bank-letter"));
+  buttons.forEach((button) => {
+    if (button.dataset.letter === letter) button.classList.add("wiggle");
+  });
+  if (Game.spell.misses >= 2) {
+    AudioBus.speak("This one.");
+    presentSpell(step);
+  }
+}
+
+function presentSentence(step) {
+  Game.phase = "pick";
+  const chips = (step.words || []).map((word, index) => {
+    return `<button type="button" class="word-chip${word.tricky ? " tricky" : ""}" data-word="${index}">${esc(word.text)}</button>`;
+  }).join("");
+  const star = step.mode === "model"
+    ? '<button class="star-next" id="next" type="button" aria-label="Next">★</button>'
+    : "";
+  const choices = (step.choices || []).length
+    ? `<div class="choices">${step.choices.map(choiceHTML).join("")}</div>`
+    : "";
+  main.innerHTML = `<div class="play">
+    <div class="pips">${pipsHTML()}</div>
+    <p class="prompt" id="prompt">${esc(step._line || step.speech || "")}</p>
+    <div class="sentence">${chips}</div>
+    ${choices}
+    ${star}
+  </div>`;
+  updateMic(step);
+}
+
+async function onHelp() {
+  const step = Game.step;
+  if (!step || !step.letters) return;
+  for (let i = 0; i < step.letters.length; i += 1) {
+    await AudioBus.playClip(soundId(step.letters[i]));
+    await AudioBus.wait(90);
+  }
+}
+
+async function onWordChip(index) {
+  const step = Game.step;
+  const word = step && step.words && step.words[index];
+  if (!word) return;
+  if (word.tricky) {
+    await AudioBus.playClip("w:" + word.say);
+    return;
+  }
+  const letters = word.letters || [];
+  for (let i = 0; i < letters.length; i += 1) {
+    await AudioBus.playClip(soundId(letters[i]));
+    await AudioBus.wait(70);
+  }
+  await AudioBus.playClip("w:" + word.say);
+}
+
 function showSampleCele() {
   Game.screen = "cele";
   Game.node = "rhyme";
@@ -773,8 +1012,14 @@ function boot() {
   const params = new URLSearchParams(location.search);
   Game.shot = params.has("shot");
   Game.shotAt = Number(params.get("at") || 0);
+  const chapterPick = Number(params.get("chapter"));
+  if (chapterPick === 1 || chapterPick === 2) {
+    Progress.data.chapter = chapterPick;
+    Progress.save();
+  }
   const go = params.get("go");
   if (go === "map") showMap();
+  else if (go === "picker") showPicker();
   else if (go === "yay") showSampleCele();
   else if (go === "grown") {
     showMap();
@@ -784,61 +1029,18 @@ function boot() {
   renderChrome();
 }
 
-document.getElementById("replay").addEventListener("click", () => {
+function handleButton(button) {
   AudioBus.unlock();
-  replay();
-});
-
-document.getElementById("home").addEventListener("click", () => {
-  AudioBus.unlock();
-  showMap({ speak: "Tap the glowing game." });
-});
-
-document.getElementById("mic").addEventListener("click", () => {
-  AudioBus.unlock();
-  onMic();
-});
-
-const grown = document.getElementById("grown");
-let holdTimer = null;
-grown.addEventListener("pointerdown", (event) => {
-  grown.setPointerCapture(event.pointerId);
-  grown.classList.add("holding");
-  clearTimeout(holdTimer);
-  holdTimer = setTimeout(() => {
-    grown.classList.remove("holding");
-    openGrownup();
-  }, 700);
-});
-function endHold() {
-  clearTimeout(holdTimer);
-  grown.classList.remove("holding");
-}
-grown.addEventListener("pointerup", endHold);
-grown.addEventListener("pointercancel", endHold);
-grown.addEventListener("contextmenu", (event) => event.preventDefault());
-
-main.addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-  if (!button) return;
-  AudioBus.unlock();
+  if (button.id === "replay") return replay();
+  if (button.id === "home") return showPicker();
+  if (button.id === "mic") return onMic();
   if (button.id === "play") return onPlay();
   if (button.id === "next") return nextStep();
   if (button.id === "wedo") return onWedo();
   if (button.id === "swoop") return onSwoop();
+  if (button.id === "help") return onHelp();
   if (button.id === "rest") return showMap({ speak: "You got a sticker. Tap the glowing game when you want to play." });
   if (button.id === "more") return onMore();
-  if (button.classList.contains("choice")) return onChoice(button.dataset.key);
-  if (button.classList.contains("blend-letter")) return onLetterTap(Number(button.dataset.i));
-  if (button.classList.contains("node")) return onNode(Number(button.dataset.i));
-  if (button.classList.contains("soon-card")) {
-    AudioBus.speak("More games are coming later. Let's play chapter 1.");
-  }
-});
-
-document.getElementById("overlay").addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-  if (!button) return;
   if (button.id === "close-grown") return closeGrownup();
   if (button.id === "mic-toggle") {
     Progress.data.mic = !Progress.data.mic;
@@ -860,10 +1062,104 @@ document.getElementById("overlay").addEventListener("click", (event) => {
     renderChrome();
     return;
   }
-  if (button.classList.contains("try")) {
-    startSkill(button.dataset.go);
+  if (button.classList.contains("try")) return startSkill(button.dataset.go);
+  if (button.classList.contains("choice")) return onChoice(button.dataset.key);
+  if (button.classList.contains("blend-letter")) return onLetterTap(Number(button.dataset.i));
+  if (button.classList.contains("node")) return onNode(Number(button.dataset.i));
+  if (button.classList.contains("chapter-card")) return enterChapter(Number(button.dataset.chapter));
+  if (button.classList.contains("word-chip")) return onWordChip(Number(button.dataset.word));
+}
+
+let press = null;
+let ghost = null;
+
+function clearPressVisual() {
+  document.querySelectorAll("button.pressed").forEach((button) => button.classList.remove("pressed"));
+}
+
+function moveGhost(x, y) {
+  if (!ghost) return;
+  ghost.style.left = x + "px";
+  ghost.style.top = y + "px";
+}
+
+document.addEventListener("pointerdown", (event) => {
+  AudioBus.unlock();
+  const button = event.target.closest("button");
+  press = {
+    id: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    button,
+    moved: false,
+    drag: !!(button && button.classList.contains("bank-letter")),
+  };
+  if (button) button.classList.add("pressed");
+  if (press.drag) {
+    try { button.setPointerCapture(event.pointerId); } catch (err) { /* ignore */ }
+    ghost = document.createElement("div");
+    ghost.className = "drag-ghost";
+    ghost.textContent = button.textContent;
+    document.body.appendChild(ghost);
+    moveGhost(event.clientX, event.clientY);
+  }
+}, true);
+
+document.addEventListener("pointermove", (event) => {
+  if (!press || event.pointerId !== press.id) return;
+  if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > 12) press.moved = true;
+  if (press.drag) moveGhost(event.clientX, event.clientY);
+}, true);
+
+document.addEventListener("pointerup", (event) => {
+  if (!press || event.pointerId !== press.id) return;
+  const button = press.button;
+  const dragging = press.drag;
+  const moved = press.moved;
+  const letter = button && button.dataset.letter;
+  press = null;
+  clearPressVisual();
+  if (ghost) {
+    ghost.remove();
+    ghost = null;
+  }
+  if (dragging) {
+    const under = document.elementFromPoint(event.clientX, event.clientY);
+    const onSlots = under && (under.classList.contains("slot") || under.closest(".slots") || under.closest(".bank"));
+    if (!moved || onSlots) tryPlace(letter);
+    return;
+  }
+  if (!button || button.id === "grown" || moved) return;
+  handleButton(button);
+}, true);
+
+document.addEventListener("pointercancel", () => {
+  press = null;
+  clearPressVisual();
+  if (ghost) {
+    ghost.remove();
+    ghost = null;
   }
 });
+
+const grown = document.getElementById("grown");
+let holdTimer = null;
+grown.addEventListener("pointerdown", (event) => {
+  try { grown.setPointerCapture(event.pointerId); } catch (err) { /* ignore */ }
+  grown.classList.add("holding");
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => {
+    grown.classList.remove("holding");
+    openGrownup();
+  }, 700);
+});
+function endHold() {
+  clearTimeout(holdTimer);
+  grown.classList.remove("holding");
+}
+grown.addEventListener("pointerup", endHold);
+grown.addEventListener("pointercancel", endHold);
+document.addEventListener("contextmenu", (event) => event.preventDefault());
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeGrownup();

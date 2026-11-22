@@ -7,6 +7,10 @@ const PICS = {
   tiger: "🐯", igloo: "🧊", nose: "👃", sat: "🛋️", pat: "🐾", tap: "🥁",
   pin: "📌", tin: "🥫", nap: "😴", sip: "🧃", pan: "🍳", ant: "🐜",
   frog: "🐸", star: "⭐", fan: "💨",
+  kite: "🪁", egg: "🥚", rat: "🐀", cap: "🧢", can: "🥫", pet: "🐹", pen: "🖊️",
+  ten: "🔟", net: "🥅", hen: "🐔", ram: "🐏", mat: "🧶", map: "🗺️", mad: "😠",
+  dad: "🧔", sad: "😢", ham: "🍖", kid: "🧒", sit: "🪑", bed: "🛏️", red: "🟥",
+  sam: "👦", hit: "👊", ran: "🏃",
 };
 
 const LETTERS = {
@@ -40,7 +44,45 @@ const LETTERS = {
     action: "Touch your nose.",
     accept: ["n", "nn", "nnn", "en", "nah", "nose", "nest"],
   },
+  c: {
+    emoji: "🐱", keyword: "cat", said: "k", clip: "k",
+    action: "Snap your fingers.",
+    accept: ["c", "k", "ck", "kay", "cat", "cup"],
+  },
+  k: {
+    emoji: "🪁", keyword: "kite", said: "k", clip: "k",
+    intro: "This letter also says k. k, like kite. Kick your foot.",
+    action: "Kick your foot.",
+    accept: ["k", "c", "ck", "kay", "kite"],
+  },
+  e: {
+    emoji: "🥚", keyword: "egg", said: "e", clip: "e",
+    action: "Pretend to crack an egg.",
+    accept: ["e", "eh", "egg"],
+  },
+  h: {
+    emoji: "🎩", keyword: "hat", said: "hhh", clip: "h",
+    action: "Puff on your hand, like a dog panting.",
+    accept: ["h", "hh", "hhh", "hat"],
+  },
+  r: {
+    emoji: "🐀", keyword: "rat", said: "rrr", clip: "r",
+    action: "Pretend to be a puppy tugging a rag.",
+    accept: ["r", "rr", "rrr", "rat"],
+  },
+  m: {
+    emoji: "🐭", keyword: "mouse", said: "mmm", clip: "m",
+    action: "Rub your tummy.",
+    accept: ["m", "mm", "mmm", "em", "mouse"],
+  },
+  d: {
+    emoji: "🐶", keyword: "dog", said: "d", clip: "d",
+    action: "Beat your hands like a drum.",
+    accept: ["d", "dd", "duh", "dog"],
+  },
 };
+
+const LETTER_ORDER = ["s", "a", "t", "p", "i", "n", "c", "k", "e", "h", "r", "m", "d"];
 
 const PATH = [
   { id: "rhyme", label: "Rhymes", icon: "👂" },
@@ -54,6 +96,18 @@ const PATH = [
   { id: "i", label: "i", icon: "🧊" },
   { id: "n", label: "n", icon: "👃" },
   { id: "words", label: "Words", icon: "📖" },
+];
+
+const PATH2 = [
+  { id: "ck", label: "c k", icon: "🐱" },
+  { id: "e", label: "e", icon: "🥚" },
+  { id: "words1", label: "Blend", icon: "✨" },
+  { id: "hr", label: "h r", icon: "🎩" },
+  { id: "words2", label: "Swoop", icon: "👀" },
+  { id: "md", label: "m d", icon: "🐭" },
+  { id: "read", label: "Match", icon: "🖼️" },
+  { id: "spell", label: "Build", icon: "🔤" },
+  { id: "stories", label: "Stories", icon: "📕" },
 ];
 
 const RHYMES = [
@@ -149,7 +203,7 @@ function picChoices(keys) {
 }
 
 function letterChoices(answer) {
-  const order = ["s", "a", "t", "p", "i", "n"];
+  const order = LETTER_ORDER;
   const idx = order.indexOf(answer);
   const taught = idx >= 0 ? order.slice(0, idx) : [];
   const foils = ["m", "f", "d", "o", "r", "h", "b", "c"];
@@ -173,7 +227,7 @@ function letterFind(target, lesson) {
     skill: lesson,
     recordAlso: target,
     speech: "Tap the one that says " + info.said + ".",
-    clips: [target],
+    clips: [info.clip || target],
     choices: letterChoices(target),
     answer: target,
     accept: info.accept,
@@ -195,7 +249,7 @@ function pictureFind(letter, lesson) {
     score: true,
     skill: lesson,
     speech: "Which picture starts with " + info.said + "?",
-    clips: [letter],
+    clips: [info.clip || letter],
     choices: picChoices([info.keyword, foilA, foilB]),
     answer: info.keyword,
     accept: [info.keyword],
@@ -205,7 +259,7 @@ function pictureFind(letter, lesson) {
 }
 
 function letterTrials(letter) {
-  const order = ["s", "a", "t", "p", "i", "n"];
+  const order = LETTER_ORDER;
   const prev = order.slice(0, order.indexOf(letter));
   const trials = [
     letterFind(letter, letter),
@@ -218,8 +272,108 @@ function letterTrials(letter) {
   return trials;
 }
 
+const BLEND1 = [
+  { id: "cat", letters: ["c", "a", "t"], foils: ["cap", "can"], accept: ["cat", "kat"] },
+  { id: "cap", letters: ["c", "a", "p"], foils: ["cat", "can"], accept: ["cap"] },
+  { id: "can", letters: ["c", "a", "n"], foils: ["cat", "cap"], accept: ["can"] },
+  { id: "pet", letters: ["p", "e", "t"], foils: ["pen", "ten"], accept: ["pet"] },
+  { id: "ten", letters: ["t", "e", "n"], foils: ["pen", "hen"], accept: ["ten"] },
+  { id: "sat", letters: ["s", "a", "t"], foils: ["sit", "mat"], accept: ["sat"] },
+];
+
+const BLEND2 = [
+  { id: "hat", letters: ["h", "a", "t"], foils: ["rat", "hit"], accept: ["hat"] },
+  { id: "rat", letters: ["r", "a", "t"], foils: ["hat", "ran"], accept: ["rat"] },
+  { id: "hen", letters: ["h", "e", "n"], foils: ["pen", "ten"], accept: ["hen"] },
+  { id: "red", letters: ["r", "e", "d"], foils: ["bed", "hen"], accept: ["red"] },
+  { id: "ran", letters: ["r", "a", "n"], foils: ["rat", "ram"], accept: ["ran", "run"] },
+  { id: "pen", letters: ["p", "e", "n"], foils: ["pet", "hen"], accept: ["pen"] },
+];
+
+const READS = [
+  { id: "sat", letters: ["s", "a", "t"], options: ["sat", "sit", "mat"], accept: ["sat"] },
+  { id: "sit", letters: ["s", "i", "t"], options: ["sit", "sat", "sip"], accept: ["sit", "set"] },
+  { id: "mat", letters: ["m", "a", "t"], options: ["mat", "sat", "map"], accept: ["mat"] },
+  { id: "cat", letters: ["c", "a", "t"], options: ["cat", "cap", "can"], accept: ["cat", "kat"] },
+  { id: "pin", letters: ["p", "i", "n"], options: ["pin", "pan", "pen"], accept: ["pin"] },
+  { id: "hat", letters: ["h", "a", "t"], options: ["hat", "hit", "rat"], accept: ["hat"] },
+  { id: "dad", letters: ["d", "a", "d"], options: ["dad", "sad", "mad"], accept: ["dad"] },
+  { id: "sad", letters: ["s", "a", "d"], options: ["sad", "dad", "sat"], accept: ["sad"] },
+];
+
+const SPELLS = [
+  { id: "mat", letters: ["m", "a", "t"], bank: ["m", "a", "t", "s", "i"], accept: ["mat"] },
+  { id: "hen", letters: ["h", "e", "n"], bank: ["h", "e", "n", "a", "p"], accept: ["hen"] },
+  { id: "cap", letters: ["c", "a", "p"], bank: ["c", "a", "p", "t", "i"], accept: ["cap"] },
+  { id: "red", letters: ["r", "e", "d"], bank: ["r", "e", "d", "a", "n"], accept: ["red"] },
+  { id: "dad", letters: ["d", "a", "d"], bank: ["d", "a", "d", "s", "m"], accept: ["dad"] },
+];
+
+const SENTENCES = [
+  {
+    id: "sam",
+    words: [
+      { text: "Sam", say: "sam", letters: ["s", "a", "m"] },
+      { text: "sat", say: "sat", letters: ["s", "a", "t"] },
+    ],
+    options: ["sam", "sadcat", "hen"],
+    accept: ["sam sat", "sam"],
+  },
+  {
+    id: "sadcat",
+    words: [
+      { text: "the", say: "the", tricky: true },
+      { text: "cat", say: "cat", letters: ["c", "a", "t"] },
+      { text: "is", say: "is", tricky: true },
+      { text: "sad", say: "sad", letters: ["s", "a", "d"] },
+    ],
+    options: ["sadcat", "redhat", "hen"],
+    accept: ["the cat is sad", "cat is sad", "sad cat"],
+  },
+  {
+    id: "dadsad",
+    words: [
+      { text: "Dad", say: "dad", letters: ["d", "a", "d"] },
+      { text: "is", say: "is", tricky: true },
+      { text: "sad", say: "sad", letters: ["s", "a", "d"] },
+    ],
+    options: ["dadsad", "redhat", "hen"],
+    accept: ["dad is sad", "dad sad"],
+  },
+  {
+    id: "hensat",
+    words: [
+      { text: "the", say: "the", tricky: true },
+      { text: "hen", say: "hen", letters: ["h", "e", "n"] },
+      { text: "sat", say: "sat", letters: ["s", "a", "t"] },
+    ],
+    options: ["hensat", "sadcat", "redhat"],
+    accept: ["the hen sat", "hen sat"],
+  },
+  {
+    id: "redhat",
+    words: [
+      { text: "a", say: "a", tricky: true },
+      { text: "red", say: "red", letters: ["r", "e", "d"] },
+      { text: "hat", say: "hat", letters: ["h", "a", "t"] },
+    ],
+    options: ["redhat", "sadcat", "hen"],
+    accept: ["a red hat", "red hat"],
+  },
+];
+
+const SCENE = { sam: "👦", sadcat: "😿", dadsad: "🧔", hensat: "🐔", hen: "🐔", redhat: "🎩", dad: "🧔" };
+
 const Session = {
   build(skill) {
+    if (skill === "ck") return this.pair(["c", "k"], "ck");
+    if (skill === "hr") return this.pair(["h", "r"], "hr");
+    if (skill === "md") return this.pair(["m", "d"], "md");
+    if (skill === "words1") return this.blendList("words1", BLEND1, "guided");
+    if (skill === "words2") return this.blendList("words2", BLEND2, "open");
+    if (skill === "read") return this.readSet();
+    if (skill === "spell") return this.spellSet();
+    if (skill === "stories") return this.storySet();
     if (skill === "rhyme") return this.rhyme();
     if (skill === "first") return this.first();
     if (skill === "robot1" || skill === "robot2") return this.robot(skill);
@@ -336,8 +490,8 @@ const Session = {
       skill: letter,
       speech: known
         ? "You know " + info.said + ", like " + info.keyword + ". Let's play."
-        : "This letter says " + info.said + ". " + info.said + ", like " + info.keyword + ". " + info.action,
-      clips: [letter],
+        : (info.intro || ("This letter says " + info.said + ". " + info.said + ", like " + info.keyword + ". " + info.action)),
+      clips: [info.clip || letter],
       letter,
       emoji: info.emoji,
     }];
@@ -347,7 +501,7 @@ const Session = {
         score: false,
         skill: letter,
         speech: "Say " + info.said + " with me.",
-        clips: [letter],
+        clips: [info.clip || letter],
         letter,
         emoji: info.emoji,
         accept: info.accept,
@@ -403,6 +557,184 @@ const Session = {
         choices: picChoices([word].concat(foils)),
         answer: word,
         accept: DECODABLE[word].accept,
+        voice: "word",
+      });
+    });
+    return steps;
+  },
+
+  pair(ids, skill) {
+    const steps = [];
+    ids.forEach((letter) => {
+      const info = LETTERS[letter];
+      steps.push({
+        type: "model",
+        score: false,
+        skill,
+        speech: info.intro || ("This letter says " + info.said + ". " + info.said + ", like " + info.keyword + ". " + info.action),
+        clips: [info.clip || letter],
+        letter,
+        emoji: info.emoji,
+      });
+    });
+    const first = LETTERS[ids[0]];
+    steps.push({
+      type: "wedo",
+      score: false,
+      skill,
+      speech: "Say " + first.said + " with me.",
+      clips: [first.clip || ids[0]],
+      letter: ids[0],
+      emoji: first.emoji,
+      accept: first.accept,
+      voice: "phoneme",
+      phoneme: ids[0],
+    });
+    steps.push(letterFind(ids[0], skill));
+    steps.push(letterFind(ids[1], skill));
+    steps.push(pictureFind(ids[0], skill));
+    steps.push(letterFind(ids[1], skill));
+    steps.push(letterFind(["s", "a", "t", "p", "i", "n"][spin() % 6], skill));
+    return steps;
+  },
+
+  blendList(skill, pool, fade) {
+    const rounds = rotate(pool, 4);
+    const first = rounds[0];
+    const steps = [{
+      type: "blend",
+      mode: "model",
+      fade: "guided",
+      score: false,
+      skill,
+      word: first.id,
+      letters: first.letters,
+      speech: "Watch. I tap each sound. Then I swoop.",
+      choices: [{ key: first.id, emoji: PICS[first.id] }],
+      answer: first.id,
+    }];
+    rounds.forEach((item) => {
+      steps.push({
+        type: "blend",
+        mode: "you",
+        fade,
+        score: true,
+        skill,
+        word: item.id,
+        letters: item.letters,
+        speech: fade === "open"
+          ? "Read the word. Tap a letter if you want a sound. Then swoop."
+          : "Tap each sound. Then swoop.",
+        choices: picChoices([item.id].concat(item.foils)),
+        answer: item.id,
+        accept: item.accept,
+        voice: "word",
+      });
+    });
+    return steps;
+  },
+
+  readSet() {
+    const rounds = rotate(READS, 4);
+    const steps = [{
+      type: "read",
+      mode: "model",
+      score: false,
+      skill: "read",
+      word: "sat",
+      letters: ["s", "a", "t"],
+      speech: "Read the whole word. Tap it if you want to hear the sounds.",
+      choices: [{ key: "sat", emoji: PICS.sat }],
+      answer: "sat",
+    }];
+    rounds.forEach((item) => {
+      steps.push({
+        type: "read",
+        mode: "you",
+        score: true,
+        skill: "read",
+        word: item.id,
+        letters: item.letters,
+        speech: "Read the word. Then tap the picture.",
+        choices: picChoices(item.options),
+        answer: item.id,
+        accept: item.accept,
+        voice: "word",
+      });
+    });
+    return steps;
+  },
+
+  spellSet() {
+    const rounds = rotate(SPELLS, 4);
+    const steps = [{
+      type: "spell",
+      mode: "model",
+      score: false,
+      skill: "spell",
+      word: "mat",
+      letters: ["m", "a", "t"],
+      bank: [],
+      speech: "I say a word. You tap the letters to build it. You can drag a letter, or just tap it.",
+      clips: ["w:mat"],
+    }];
+    rounds.forEach((item) => {
+      steps.push({
+        type: "spell",
+        mode: "you",
+        score: true,
+        skill: "spell",
+        word: item.id,
+        letters: item.letters,
+        bank: shuffled(item.bank.slice()),
+        speech: "Make the word.",
+        clips: ["w:" + item.id],
+        accept: item.accept,
+        voice: "word",
+      });
+    });
+    return steps;
+  },
+
+  storySet() {
+    const steps = [{
+      type: "sentence",
+      mode: "model",
+      score: false,
+      skill: "stories",
+      words: [
+        { text: "a", say: "a", tricky: true },
+        { text: "the", say: "the", tricky: true },
+        { text: "is", say: "is", tricky: true },
+      ],
+      speech: "Some words we remember. a. the. is. We do not sound them out.",
+      choices: [],
+      answer: "",
+    }, {
+      type: "sentence",
+      mode: "model",
+      score: false,
+      skill: "stories",
+      words: [
+        { text: "a", say: "a", tricky: true },
+        { text: "red", say: "red", letters: ["r", "e", "d"] },
+        { text: "hat", say: "hat", letters: ["h", "a", "t"] },
+      ],
+      speech: "a red hat.",
+      choices: [{ key: "redhat", emoji: "🎩" }],
+      answer: "redhat",
+    }];
+    rotate(SENTENCES, 4).forEach((item) => {
+      steps.push({
+        type: "sentence",
+        mode: "you",
+        score: true,
+        skill: "stories",
+        words: item.words,
+        speech: "Read it. Then tap the picture.",
+        choices: item.options.map((key) => ({ key, emoji: SCENE[key] || PICS[key] })),
+        answer: item.id,
+        accept: item.accept,
         voice: "word",
       });
     });
