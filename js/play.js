@@ -1,7 +1,11 @@
 /* Short playful rounds. Every tap or drag is still a reading rep. */
 const PlaySets = {
   has(id) {
-    return id === "reader" || !!this.pools[id];
+    return id === "reader" || id === "pizza" || id === "sandwich" || id === "sort" || !!this.pools[id];
+  },
+
+  reading(game) {
+    return game === "reader" || game === "pizza" || game === "sandwich" || game === "sort";
   },
 
   pools: {
@@ -50,12 +54,14 @@ const PlaySets = {
   },
 
   lengthFor(id) {
-    if (id === "reader" || id === "feed" || id === "train" || id === "hop" || id === "fish" || id === "mystery") return 11;
+    if (id === "reader" || id === "feed" || id === "train" || id === "hop" || id === "fish" || id === "mystery" || id === "pizza" || id === "sandwich" || id === "sort") return 11;
     return 9;
   },
 
   build(id) {
     if (id === "reader") return this.buildReader();
+    if (id === "pizza" || id === "sandwich") return this.buildKitchen(id);
+    if (id === "sort") return this.buildSort();
     const items = Deal.rounds(this.pools[id], this.lengthFor(id));
     return items.map((item) => ({
       type: "play",
@@ -117,18 +123,121 @@ const PlaySets = {
     return Deal.withAnswer(step.answer, step.options || []);
   },
 
+  boxOrder(step) {
+    return Deal.place((step.boxOptions || []).slice(), step.box);
+  },
+
+  kitchenBank() {
+    return ["cat", "hat", "ham", "pin", "pen", "map", "can", "hen", "rat", "cap", "pan", "sip", "tin", "mat", "tap", "nap"];
+  },
+
+  buildKitchen(game) {
+    const bank = this.kitchenBank();
+    const speech = game === "pizza"
+      ? "Read the word. Drag it onto the pizza."
+      : "Read the word. Drag it onto the sandwich.";
+    return Deal.rounds(bank.map((id) => ({ answer: id })), 11).map((item) => {
+      const foils = Deal.shuffle(bank.filter((word) => word !== item.answer)).slice(0, 2);
+      return {
+        type: "play",
+        game,
+        score: true,
+        skill: game,
+        speech,
+        clips: [],
+        answer: item.answer,
+        word: item.answer,
+        picture: item.answer,
+        options: [item.answer].concat(foils),
+        accept: [item.answer],
+      };
+    });
+  },
+
+  buildSort() {
+    const groups = {
+      at: ["cat", "hat", "mat", "sat", "pat", "rat"],
+      ap: ["map", "cap", "tap", "nap"],
+    };
+    const cards = [];
+    Object.keys(groups).forEach((box) => {
+      groups[box].forEach((word) => cards.push({ answer: word, box }));
+    });
+    return Deal.rounds(cards, 11).map((item) => ({
+      type: "play",
+      game: "sort",
+      score: true,
+      skill: "sort",
+      speech: "Read the word. Drag it to the matching ending.",
+      clips: [],
+      answer: item.answer,
+      word: item.answer,
+      picture: item.answer,
+      box: item.box,
+      boxOptions: ["at", "ap"],
+      accept: [item.answer],
+    }));
+  },
+
   present(step) {
     this.step = step;
     this.filled = [];
     this.misses = 0;
     this.cursor = 0;
+    this.busy = false;
+    this.made = (this.made || []).slice(0, Game.index);
     const view = this["view_" + step.game];
     const held = Game.shot ? "" : " hold";
     const pips = step.game === "reader" ? "" : `<div class="pips">${pipsHTML()}</div>`;
     main.innerHTML = `<div class="play mini${held}">${pips}${view.call(this, step)}${skipHTML()}</div>`;
     updateMic(step);
     this.combo = step.game === "reader" && step.doneWords ? this.combo || 0 : 0;
-    if (step.game === "reader") this.armHint();
+    if (this.reading(step.game)) this.armHint();
+  },
+
+  pileHTML(box) {
+    return (this.made || []).filter((item) => !box || item.box === box).map((item) => {
+      return `<span class="topping">${PICS[item.word] || ""}</span>`;
+    }).join("");
+  },
+
+  view_pizza(step) {
+    const cards = this.choiceOrder(step).map((word) => {
+      return `<button type="button" class="piece word-card" data-key="${esc(word)}">${esc(word)}</button>`;
+    }).join("");
+    return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
+      <div class="word-queue"><span class="queue-word now">${esc(step.answer)}</span><button type="button" id="hint" class="hint" aria-label="Hear the word">🔊</button></div>
+      <div class="maker pizza" data-accept="${esc(step.answer)}"><div class="pile">${this.pileHTML()}</div></div>
+      <div class="pieces">${cards}</div>`;
+  },
+
+  view_sandwich(step) {
+    const cards = this.choiceOrder(step).map((word) => {
+      return `<button type="button" class="piece word-card" data-key="${esc(word)}">${esc(word)}</button>`;
+    }).join("");
+    return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
+      <div class="word-queue"><span class="queue-word now">${esc(step.answer)}</span><button type="button" id="hint" class="hint" aria-label="Hear the word">🔊</button></div>
+      <div class="maker sandwich" data-accept="${esc(step.answer)}">
+        <div class="bread">🍞</div>
+        <div class="pile">${this.pileHTML()}</div>
+        <div class="bread">🍞</div>
+      </div>
+      <div class="pieces">${cards}</div>`;
+  },
+
+  view_sort(step) {
+    const samples = { at: "hat", ap: "map" };
+    const boxes = this.boxOrder(step).map((box) => {
+      return `<button type="button" class="sort-box" data-accept="${esc(box)}">
+        <span class="sample">${PICS[samples[box]] || ""}</span>
+        <span class="ending">${esc(box)}</span>
+        <span class="pile">${this.pileHTML(box)}</span>
+      </button>`;
+    }).join("");
+    return `<p class="prompt" id="prompt">${esc(step.speech)}</p>
+      <div class="word-queue"><button type="button" id="hint" class="hint" aria-label="Hear the word">🔊</button></div>
+      <div class="sort-row">${boxes}</div>
+      <div class="pieces"><button type="button" class="piece word-card big-piece" data-key="${esc(step.answer)}">${esc(step.answer)}</button></div>`;
   },
 
   unlock() {
@@ -272,11 +381,14 @@ const PlaySets = {
     return best;
   },
 
-  drop(piece, event) {
+  drop(piece, event, moved) {
     const step = this.step;
     if (!step || Game.lock || !Game.ready || piece.disabled) return;
     const x = event.clientX;
     const y = event.clientY;
+    if (step.game === "pizza" || step.game === "sandwich" || step.game === "sort") {
+      return this.dropKitchen(piece, event, moved);
+    }
     if (step.game === "train" || step.game === "hop") {
       const index = this.filled.length;
       const need = step.letters[index];
@@ -326,11 +438,86 @@ const PlaySets = {
     this.back(piece);
   },
 
+  dropKitchen(piece, event, moved) {
+    const step = this.step;
+    if (this.busy) return;
+    const key = piece.dataset.key;
+    if (step.game === "sort") {
+      const under = document.elementFromPoint(event.clientX, event.clientY);
+      const box = under && under.closest(".sort-box");
+      if (box && key === step.answer && box.dataset.accept === step.box) return this.landKitchen(piece, step);
+      if (moved) {
+        this.misses += 1;
+        if (box) box.classList.add("wiggle");
+        this.back(piece);
+      }
+      return;
+    }
+    const under = document.elementFromPoint(event.clientX, event.clientY);
+    const board = document.querySelector(".maker");
+    const maker = under && under.closest(".maker");
+    const close = board && this.near(board, event.clientX, event.clientY, 120);
+    if (key === step.answer && (maker || close || !moved)) return this.landKitchen(piece, step);
+    if (key !== step.answer) {
+      this.misses += 1;
+      this.back(piece);
+      return;
+    }
+    if (moved) this.back(piece);
+  },
+
+  landKitchen(piece, step) {
+    if (this.busy) return;
+    this.busy = true;
+    piece.disabled = true;
+    piece.classList.add("morph");
+    piece.textContent = PICS[step.answer] || "";
+    const box = step.box || step.game;
+    this.made = (this.made || []).concat([{ word: step.answer, box }]);
+    const pile = step.game === "sort"
+      ? document.querySelector('.sort-box[data-accept="' + step.box + '"] .pile')
+      : document.querySelector(".maker .pile");
+    if (pile) {
+      const bit = document.createElement("span");
+      bit.className = "topping";
+      bit.textContent = PICS[step.answer] || "";
+      pile.appendChild(bit);
+    }
+    const said = AudioBus.playClip("w:" + step.answer);
+    const last = Game.index >= Game.steps.length - 1;
+    const board = document.querySelector(".maker, .sort-row");
+    if ((this.made || []).length === 6) confetti(false);
+    const finish = () => succeed(step, { spoken: false, clean: this.misses === 0 });
+    if (last && board) {
+      board.classList.add("bake");
+      Promise.resolve(said).then(() => {
+        board.classList.add("eaten");
+        confetti(true);
+        setTimeout(finish, 700);
+      });
+      return;
+    }
+    Promise.resolve(said).then(finish);
+  },
+
+  tapSort(button) {
+    const step = this.step;
+    if (!step || step.game !== "sort" || Game.lock || !Game.ready || this.busy) return;
+    if (button.dataset.accept !== step.box) {
+      this.misses += 1;
+      button.classList.add("wiggle");
+      this.goofy();
+      return;
+    }
+    const piece = document.querySelector('.piece[data-key="' + step.answer + '"]');
+    if (piece) this.landKitchen(piece, step);
+  },
+
   armHint() {
     clearTimeout(this.hintTimer);
     this.hintTimer = setTimeout(() => {
       const hint = document.getElementById("hint");
-      if (hint && Game.step && Game.step.game === "reader") hint.classList.add("show");
+      if (hint && Game.step && PlaySets.reading(Game.step.game)) hint.classList.add("show");
     }, 4500);
   },
 
@@ -340,8 +527,8 @@ const PlaySets = {
 
   sayHint() {
     const step = this.step;
-    if (!step || step.game !== "reader") return;
-    const word = step.queue[this.cursor];
+    if (!step || !this.reading(step.game)) return;
+    const word = step.game === "reader" ? step.queue[this.cursor] : step.answer;
     if (word) AudioBus.playClip("w:" + word);
   },
 

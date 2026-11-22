@@ -115,6 +115,9 @@ const PATH2 = [
   { id: "bubble", label: "Bubbles", icon: "🫧", free: true },
   { id: "mystery", label: "Mystery", icon: "🎁", free: true },
   { id: "reader", label: "Read", icon: "💧", free: true },
+  { id: "pizza", label: "Pizza", icon: "🍕", free: true },
+  { id: "sort", label: "Sort", icon: "📦", free: true },
+  { id: "sandwich", label: "Sandwich", icon: "🥪", free: true },
 ];
 
 const RHYMES = [

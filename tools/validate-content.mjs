@@ -14,7 +14,9 @@ vm.runInContext(fs.readFileSync(path.join(root, "js/play.js"), "utf8") + "\nthis
 
 const taught = new Set("satpinckehrmd".split(""));
 const tricky = new Set(["a", "the", "is"]);
-const printSkills = new Set(["words", "words1", "words2", "read", "spell", "stories", "feed", "train", "hop", "fish", "mystery", "reader"]);
+const printSkills = new Set(["words", "words1", "words2", "read", "spell", "stories", "feed", "train", "hop", "fish", "mystery", "reader", "pizza", "sandwich", "sort"]);
+const dragGames = ["feed", "train", "hop", "mystery", "fish", "pizza", "sandwich", "sort"];
+const quietRead = new Set(["reader", "pizza", "sandwich", "sort"]);
 const errors = [];
 function fail(message) {
   if (errors.length < 40) errors.push(message);
@@ -99,7 +101,7 @@ function resetDeal() {
 }
 
 const lessons = ["rhyme", "first", "robot1", "robot2", "s", "a", "t", "p", "i", "n", "c", "k", "e", "h", "r", "m", "d", "ck", "hr", "md", "sat", "words", "words1", "words2", "read", "spell", "stories"];
-const playGames = Object.keys(context.PlaySets.pools).concat(["reader"]);
+const playGames = Object.keys(context.PlaySets.pools).concat(["reader", "pizza", "sandwich", "sort"]);
 
 function scan(name, build) {
   resetDeal();
@@ -108,11 +110,32 @@ function scan(name, build) {
     let steps = [];
     try { steps = build(); }
     catch (error) { fail(name + " build " + error.message); return; }
+    if (round === 0) {
+      if (dragGames.indexOf(name) !== -1 && (steps.length < 10 || steps.length > 12)) fail(name + " session length " + steps.length);
+      if ((name === "pop" || name === "bubble") && (steps.length < 8 || steps.length > 10)) fail(name + " session length " + steps.length);
+      if (name === "reader") {
+        const count = steps.reduce((sum, step) => sum + ((step.queue && step.queue.length) || 0), 0);
+        if (count < 10 || count > 12) fail("reader word count " + count);
+      }
+    }
     let previous = "";
     steps.forEach((step) => {
       const answer = step.answer || step.word;
       if (playGames.indexOf(name) !== -1 && answer && answer === previous) fail(name + " repeated " + answer + " back to back");
       if (answer) previous = answer;
+      if (quietRead.has(name)) {
+        const said = " " + String(step.speech || "").toLowerCase().replace(/[^a-z\s]/g, " ") + " ";
+        if (answer && said.indexOf(" " + String(answer).toLowerCase() + " ") !== -1) fail(name + " prompt says " + answer);
+        if ((step.clips || []).some((clip) => String(clip).indexOf("w:") === 0)) fail(name + " speaks the word before a choice");
+      }
+      if (step.boxOptions) {
+        const slots = context.PlaySets.boxOrder(step);
+        if (slots.indexOf(step.box) < 0) fail(name + " missing box " + step.box);
+        if (step.word && !String(step.word).endsWith(step.box)) fail(name + " " + step.word + " is not in the " + step.box + " box");
+        notePosition(name, slots, step.box);
+        checkStep(name, step, []);
+        return;
+      }
       const keys = step.choices
         ? step.choices.map((choice) => choice.key || choice.letter)
         : (step.options ? context.PlaySets.choiceOrder(step) : []);

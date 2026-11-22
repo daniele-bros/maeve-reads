@@ -704,9 +704,9 @@ function replay() {
   const step = Game.step;
   if (!step) return;
   AudioBus.stop();
-  if (step.game === "reader") {
-    AudioBus.speak(step.speech || "Read the word. Pop its picture.");
-    if (Game.ready) AudioBus.seaStart();
+  if (step.game === "reader" || step.game === "pizza" || step.game === "sandwich" || step.game === "sort") {
+    AudioBus.speak(step.speech || "Read the word.");
+    if (step.game === "reader" && Game.ready) AudioBus.seaStart();
     return;
   }
   const clip = (step.clips && step.clips[0]) || (step.word ? "w:" + step.word : "");
@@ -1107,6 +1107,7 @@ function handleButton(button) {
   if (button.id === "more") return onMore();
   if (button.id === "again") return startSkill(Game.skill || Game.node);
   if (button.id === "hint") return PlaySets.sayHint();
+  if (button.classList.contains("sort-box")) return PlaySets.tapSort(button);
   if (button.id === "close-grown") return closeGrownup();
   if (button.id === "mic-toggle") {
     Progress.data.mic = !Progress.data.mic;
@@ -1191,7 +1192,7 @@ document.addEventListener("pointerup", (event) => {
     ghost = null;
   }
   if (dragging && button && button.classList.contains("piece")) {
-    PlaySets.drop(button, event);
+    PlaySets.drop(button, event, moved);
     return;
   }
   if (dragging) {

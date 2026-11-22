@@ -64,6 +64,10 @@ What she sees and hears first, what she does, the feedback, and what comes next.
 
 **Bubble Pop Reader.** This one is reading, so Pip does not say the word first. One word, then two, then three, show at the top, and the current word is large. Bubbles with pictures drift in the water. She pops them in order. The right pop makes a pop, a sparkle, and says that word. A wrong bubble wobbles back, with no penalty. Bubbles stay in the tank and loop, and every word in the list has a picture on screen. After a few seconds a hint button can say the current word. Twelve words, then a big finish and Play again.
 
+**Pizza and sandwich.** The printed word is the order. She drags that word onto the food, and the word turns into its picture. A wrong word bounces back. About eleven toppings, then the pizza bakes and the sandwich gets eaten. The word is not spoken until it lands. A hint can say it after a few seconds.
+
+**Sort.** Two boxes show an ending, at or ap, with an example picture. She reads one word and drags it to the ending it shares. The word becomes its picture in the box. The correct box moves sides, and it does not stay on the same side more than twice in a row.
+
 ## Session shape
 
-Teaching rounds are about five tries. Drag and match games are about eleven. Pop games are about nine. Bubble Pop Reader is twelve words. Then a sticker, Play again, or stop. Back, Retry, and Next do not change mastery. Retry throws away a stuck sound, a stuck drag, and a hung microphone, then plays the prompt again on the same item. A content check builds 500 sessions of every game before the site deploys.
+Teaching rounds are about five tries. Drag and match games, including pizza, sandwich, and sorting, are about eleven. Pop games are about nine. Bubble Pop Reader is twelve words. Then a sticker, Play again, or stop. Back, Retry, and Next do not change mastery. Retry throws away a stuck sound, a stuck drag, and a hung microphone, then plays the prompt again on the same item. A content check builds 500 sessions of every game before the site deploys.
