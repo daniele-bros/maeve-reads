@@ -1,6 +1,6 @@
 # Why the lessons are built this way
 
-Maeve is 4. Chapter 1 is the foundation: hear sounds in words, learn a few letter sounds, and blend the first words. Chapter 2 is where she sounds words out and reads them. Chapter 3 (little stories) stays locked. Chapter 1 does not have to be finished before Chapter 2. The chapter picker shows where she is, and a grown-up can switch.
+Maeve is 4. The lessons still follow the same order in the background: hear sounds in words, learn letter sounds, then sound words out and read them. On screen, every game is open at once. Nothing is locked behind a chapter.
 
 ## The research underneath
 
@@ -36,7 +36,7 @@ When she says the sound or the word, she is practicing the link between grapheme
 
 ## Chapter 2: sounding out and reading words
 
-Same ingredients as Chapter 1: systematic synthetic phonics, cumulative review, I do / we do / you do, gentle scaffolding, and mastery (about 4 of the last 5 first tries) before the next game in the chapter glows.
+Same ingredients: systematic synthetic phonics, cumulative review, I do / we do / you do, and gentle scaffolding. Mastery (about 4 of the last 5 first tries) is recorded for grown-ups. It does not lock the next game.
 
 **Next sounds.** Jolly Phonics group 2, a couple at a time, mixed with review of s, a, t, p, i, n: **c** and **k** (one sound, /k/, as in cat and kite), then **e**, **h**, **r**, **m**, and **d**. Lowercase. Each has a keyword and an action. Clips stay free of a schwa: stretched sounds where that works (`eh`, `rrr`, `mmm`) and a short burst for stops.
 

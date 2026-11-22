@@ -47,11 +47,8 @@ function nodeDone(node) {
   return Progress.isMastered(node.id);
 }
 
-function isUnlocked(index) {
-  const node = activePath()[index];
-  if (node && node.free) return true;
-  if (index <= 0) return true;
-  return nodeDone(activePath()[index - 1]);
+function isUnlocked() {
+  return true;
 }
 
 function currentIndex() {
@@ -60,8 +57,7 @@ function currentIndex() {
 }
 
 function hereLine() {
-  if ((Progress.data.chapter || 2) === 1) return "You are here. Chapter 1. First sounds.";
-  return "You are here. Chapter 2. We read words.";
+  return "Tap a picture.";
 }
 
 function norm(text) {
@@ -656,11 +652,8 @@ function celebrate() {
   Progress.data.stars = (Progress.data.stars || 0) + 1;
   Progress.save();
   Game.screen = "cele";
-  const finished = activePath().every(nodeDone);
-  const chapterName = Progress.data.chapter === 1 ? "Chapter 1" : "Chapter 2";
   let line = "Great playing, Maeve! You earned a sticker. We can rest, or play some more.";
-  if (finished && now && !was) line = "You did it, Maeve! " + chapterName + " is complete! We can rest now.";
-  else if (now && !was) line = "You did it, Maeve! You earned a sticker. We can rest now.";
+  if (now && !was) line = "You did it, Maeve! You earned a sticker. We can rest now.";
   document.getElementById("pip").classList.add("yay");
   updateMic(null);
   main.innerHTML = celeHTML(sticker, line);
@@ -670,17 +663,7 @@ function celebrate() {
 }
 
 function onMore() {
-  const path = activePath();
-  const idx = path.findIndex((node) => node.id === Game.node);
-  if (idx >= 0 && nodeDone(path[idx]) && idx < path.length - 1) {
-    startSkill(path[idx + 1].id);
-    return;
-  }
-  if (idx >= 0 && !nodeDone(path[idx])) {
-    startSkill(Game.node);
-    return;
-  }
-  startSkill(Game.node || "rhyme");
+  showMap({ speak: "Tap a picture." });
 }
 
 function replay() {
@@ -689,12 +672,8 @@ function replay() {
     AudioBus.speak("Tap the big button to play.");
     return;
   }
-  if (Game.screen === "picker") {
-    AudioBus.speak(hereLine());
-    return;
-  }
-  if (Game.screen === "map") {
-    AudioBus.speak("Tap the glowing game.");
+  if (Game.screen === "picker" || Game.screen === "map") {
+    AudioBus.speak("Tap a picture.");
     return;
   }
   if (Game.screen === "cele") {
@@ -717,88 +696,75 @@ function replay() {
   AudioBus.speak(step._line || step.speech || "Tap the picture.");
 }
 
-function renderMap() {
-  const path = activePath();
-  const current = currentIndex();
-  const chapter = Progress.data.chapter === 1 ? 1 : 2;
-  const title = chapter === 1 ? "Chapter 1" : "Chapter 2";
-  const sub = chapter === 1 ? "First sounds" : "Read words";
-  const nodes = path.map((node, index) => {
-    const unlocked = isUnlocked(index);
-    const done = nodeDone(node);
-    const cls = [
-      "node",
-      unlocked ? "" : "locked",
-      done ? "done" : "",
-      index === current ? "current" : "",
-    ].filter(Boolean).join(" ");
-    return `<button type="button" class="${cls}" data-i="${index}" aria-label="${esc(node.label)}">
-      <span class="ico">${node.icon}</span>
-      <span class="lbl">${esc(node.label)}</span>
-    </button>`;
-  }).join("");
-  const stickers = Progress.data.stickers.length
-    ? Progress.data.stickers.map((sticker) => `<span>${sticker}</span>`).join("")
-    : '<span class="empty">Stickers will show up here.</span>';
-  main.innerHTML = `<div class="map">
-    <div class="map-head">
-      <h2>${title}</h2>
-      <p>${sub}</p>
-    </div>
-    <div class="nodes">${nodes}</div>
-    <div class="stickers"><b>Stickers</b>${stickers}</div>
-  </div>`;
+function homeSections() {
+  const sounds = LETTER_ORDER.map((id) => ({
+    id,
+    label: id,
+    say: LETTERS[id].keyword,
+    icon: LETTERS[id].emoji,
+  }));
+  return [
+    {
+      featured: true,
+      tiles: [
+        { id: "pizza", label: "Pizza", say: "Pizza", icon: "🍕" },
+        { id: "sandwich", label: "Sandwich", say: "Sandwich", icon: "🥪" },
+        { id: "sort", label: "Sort", say: "Sort", icon: "📦" },
+        { id: "reader", label: "Bubble Pop", say: "Bubble Pop", icon: "💧" },
+      ],
+    },
+    { title: "Sounds", tiles: sounds },
+    {
+      title: "Blend and read",
+      tiles: [
+        { id: "rhyme", label: "Rhymes", say: "Rhymes", icon: "👂" },
+        { id: "first", label: "Starts", say: "Starts", icon: "🌟" },
+        { id: "robot", label: "Robot", say: "Robot", icon: "🤖" },
+        { id: "sat", label: "sat", say: "sat", icon: "🛋️" },
+        { id: "words", label: "Words", say: "Words", icon: "📖" },
+        { id: "ck", label: "c k", say: "cat and kite", icon: "🐱" },
+        { id: "words1", label: "Blend", say: "Blend", icon: "✨" },
+        { id: "hr", label: "h r", say: "hat and rat", icon: "🎩" },
+        { id: "words2", label: "Swoop", say: "Swoop", icon: "👀" },
+        { id: "md", label: "m d", say: "mouse and dog", icon: "🐭" },
+        { id: "read", label: "Match", say: "Match", icon: "🖼️" },
+        { id: "spell", label: "Build", say: "Build", icon: "🔤" },
+        { id: "stories", label: "Stories", say: "Stories", icon: "📕" },
+      ],
+    },
+    {
+      title: "Drag games",
+      tiles: [
+        { id: "pop", label: "Pop", say: "Pop", icon: "🎈" },
+        { id: "bubble", label: "Bubbles", say: "Bubbles", icon: "🫧" },
+        { id: "feed", label: "Feed", say: "Feed", icon: "👾" },
+        { id: "train", label: "Train", say: "Train", icon: "🚂" },
+        { id: "hop", label: "Hop", say: "Hop", icon: "🐸" },
+        { id: "fish", label: "Fish", say: "Fish", icon: "🎣" },
+        { id: "mystery", label: "Mystery", say: "Mystery", icon: "🎁" },
+      ],
+    },
+  ];
 }
 
-function renderPicker() {
-  const here = Progress.data.chapter || 2;
-  const cards = [
-    { n: 1, icon: "👂", name: "Sounds", note: "Chapter 1" },
-    { n: 2, icon: "📖", name: "Words", note: "Chapter 2" },
-    { n: 3, icon: "🔒", name: "Stories", note: "Chapter 3" },
-  ].map((card) => {
-    const cls = ["chapter-card", card.n === here ? "here" : "", card.n === 3 ? "locked" : ""].filter(Boolean).join(" ");
-    const badge = card.n === here ? '<div class="here-badge">You are here</div>' : "";
-    return `<button type="button" class="${cls}" data-chapter="${card.n}" aria-label="${esc(card.note)} ${esc(card.name)}${card.n === here ? ", you are here" : ""}">
-      ${badge}
-      <span class="num">${card.n}</span>
-      <span class="ico">${card.icon}</span>
-      <h2>${esc(card.name)}</h2>
-    </button>`;
+function tileHTML(tile, featured) {
+  return `<button type="button" class="tile${featured ? " feat" : ""}" data-go="${esc(tile.id)}" data-say="${esc(tile.say)}" aria-label="${esc(tile.say)}">
+    <span class="ico">${tile.icon}</span>
+    <span class="lbl">${esc(tile.label)}</span>
+  </button>`;
+}
+
+function renderMap() {
+  const bands = homeSections().map((band) => {
+    const tiles = band.tiles.map((tile) => tileHTML(tile, band.featured)).join("");
+    const heading = band.title ? `<h2>${esc(band.title)}</h2>` : "";
+    return `<section class="band${band.featured ? " featured" : ""}">${heading}<div class="tiles">${tiles}</div></section>`;
   }).join("");
-  main.innerHTML = `<div class="picker">${cards}</div>`;
+  main.innerHTML = `<div class="home">${bands}</div>`;
 }
 
 function showPicker(opts) {
-  closeGrownup();
-  Game.screen = "picker";
-  Game.token += 1;
-  AudioBus.stop();
-  document.getElementById("pip").classList.remove("yay");
-  updateMic(null);
-  renderPicker();
-  renderChrome();
-  let line = hereLine();
-  if (opts && opts.hello) line = "Hi Maeve! I am Pip. " + line;
-  if (!Game.shot) AudioBus.speak(line);
-}
-
-function enterChapter(n) {
-  if (n === 3) {
-    AudioBus.speak("Chapter 3 is coming soon.");
-    const card = document.querySelector('.chapter-card.locked');
-    if (card) {
-      card.classList.remove("wiggle");
-      void card.offsetWidth;
-      card.classList.add("wiggle");
-    }
-    return;
-  }
-  Progress.data.chapter = n;
-  Progress.save();
-  showMap({
-    speak: n === 1 ? "Chapter 1. First sounds. Tap the glowing game." : "Chapter 2. Let's read words. Tap the glowing game.",
-  });
+  showMap(opts && opts.hello ? { speak: "Hi Maeve! I am Pip. Tap a picture." } : opts);
 }
 
 function showMap(opts) {
@@ -811,7 +777,7 @@ function showMap(opts) {
   renderMap();
   renderChrome();
   if (opts && opts.speak) {
-    AudioBus.speak(typeof opts.speak === "string" ? opts.speak : "Tap the glowing game.");
+    AudioBus.speak(typeof opts.speak === "string" ? opts.speak : "Tap a picture.");
   }
 }
 
@@ -835,7 +801,19 @@ function freshPlayer() {
 
 function onPlay() {
   AudioBus.unlock();
-  showPicker({ hello: freshPlayer() });
+  showMap({ speak: freshPlayer() ? "Hi Maeve! I am Pip. Tap a picture." : "Tap a picture." });
+}
+
+function openTile(button) {
+  const id = button.dataset.go;
+  const say = button.dataset.say || "";
+  const token = ++Game.token;
+  AudioBus.unlock();
+  AudioBus.stop();
+  AudioBus.speak(say).then(() => {
+    if (token !== Game.token || Game.screen !== "map") return;
+    startSkill(id);
+  });
 }
 
 function startSkill(id) {
@@ -915,7 +893,7 @@ function openGrownup() {
     <ul>${sounds}</ul>
     <h3>Games</h3>
     <ul>${ears}</ul>
-    <p>A sound is solid after about 4 of the last 5 tries are correct on the first tap. Then the next game glows.</p>
+    <p>A sound is solid after about 4 of the last 5 tries are correct on the first tap. Every game stays open.</p>
     <h3>Try a game</h3>
     <div class="try-row">${tries}</div>
     <h3>Practice away from the screen</h3>
@@ -1093,17 +1071,17 @@ function boot() {
 function handleButton(button) {
   AudioBus.unlock();
   if (button.id === "replay") return replay();
-  if (button.id === "home") return showPicker();
+  if (button.id === "home") return showMap({ speak: "Tap a picture." });
   if (button.id === "mic") return onMic();
   if (button.id === "play") return onPlay();
   if (button.id === "next" || button.id === "skip" || button.id === "nav-next") return skipRound();
   if (button.id === "nav-back") return backRound();
   if (button.id === "nav-retry" || button.id === "replay-target") return button.id === "nav-retry" ? retryRound() : replay();
-  if (button.id === "nav-home") return showMap({ speak: "Tap the glowing game." });
+  if (button.id === "nav-home") return showMap({ speak: "Tap a picture." });
   if (button.id === "wedo") return onWedo();
   if (button.id === "swoop") return onSwoop();
   if (button.id === "help") return onHelp();
-  if (button.id === "rest") return showMap({ speak: "You got a sticker. Tap the glowing game when you want to play." });
+  if (button.id === "rest") return showMap({ speak: "You got a sticker. Tap a picture when you want to play." });
   if (button.id === "more") return onMore();
   if (button.id === "again") return startSkill(Game.skill || Game.node);
   if (button.id === "hint") return PlaySets.sayHint();
@@ -1133,8 +1111,8 @@ function handleButton(button) {
   if (button.classList.contains("balloon") || button.classList.contains("bubble")) return PlaySets.tap(button);
   if (button.classList.contains("choice")) return onChoice(button.dataset.key);
   if (button.classList.contains("blend-letter")) return onLetterTap(Number(button.dataset.i));
+  if (button.classList.contains("tile")) return openTile(button);
   if (button.classList.contains("node")) return onNode(Number(button.dataset.i));
-  if (button.classList.contains("chapter-card")) return enterChapter(Number(button.dataset.chapter));
   if (button.classList.contains("word-chip")) return onWordChip(Number(button.dataset.word));
 }
 

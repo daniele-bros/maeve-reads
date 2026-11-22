@@ -233,7 +233,29 @@ header {
   to { transform: scale(1.35); opacity: 0; }
 }
 
-#main { min-width: 0; min-height: 0; }
+#main { min-width: 0; min-height: 0; overflow: auto; }
+
+.home { display: flex; flex-direction: column; gap: 16px; padding: 8px 18px 28px 8px; }
+.band h2 { margin: 0 0 8px; font-size: 22px; }
+.tiles { display: flex; flex-wrap: wrap; gap: 12px; }
+.tile {
+  width: 118px;
+  height: 118px;
+  border-radius: 28px;
+  background: white;
+  box-shadow: 0 6px 0 var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.tile .ico { font-size: 48px; line-height: 1; }
+.tile .lbl { font-size: 18px; line-height: 1.1; }
+.tile.feat { width: 168px; height: 150px; background: #fff7df; }
+.tile.feat .ico { font-size: 68px; }
+.tile.feat .lbl { font-size: 22px; }
+.band.featured { padding-bottom: 4px; }
 
 .play, .start, .map {
   height: 100%;

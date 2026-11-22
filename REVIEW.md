@@ -24,7 +24,7 @@ Ranked by impact.
 3. **Drag with no tap, and a text Next in the middle of the screen,** made it easy for her to skip by accident and hard to finish a drag. Next now lives in a corner bar. Pieces are large. A wrong drop slides back and Pip pulls a face. It does not cost a point.
 4. **Juice is still light** next to Khan Academy Kids or Teach Your Monster to Read: a float, a bounce, confetti, a goofy Pip. Enough to mark success. Not a carnival. That is the right trade for a 4-year-old who is supposed to be reading, not hunting prizes.
 5. **She does not have to read the instructions.** Pip speaks once at the start. The corner icons are arrows, a circular arrow, and a house. The header speaker repeats the target sound or word.
-6. **A grown-up is still useful for the first Play tap and for switching chapters.** After that she can tap the glowing game. The corner bar is for the adult when a round goes wrong.
+6. **A grown-up is still useful for the first Play tap.** After that every picture on the home screen is open. The corner bar is for the adult when a round goes wrong.
 
 ## Round flows
 
