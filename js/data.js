@@ -1,4 +1,4 @@
-/* Chapter 1 content. Ear games, then s a t p i n, then decodable words. */
+/* Words, letters, and lessons. Ear games, then s a t p i n, then decodable words. */
 const PICS = {
   cat: "🐱", hat: "🎩", bat: "🦇", dog: "🐶", log: "🪵", sun: "☀️", bun: "🍞",
   pig: "🐷", wig: "👒", bee: "🐝", tree: "🌳", moon: "🌙", spoon: "🥄",

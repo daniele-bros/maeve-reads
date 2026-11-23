@@ -1,4 +1,4 @@
-/* Maeve Reads — Chapter 1. Tap or say the answer. */
+/* Maeve Reads. Tap or say the answer. */
 const STICKERS = ["🌸", "🦋", "🌈", "🍪", "🎈", "🐥", "🍓", "🌙", "🍀", "🎀", "🌻", "⭐"];
 
 const Game = {
@@ -38,7 +38,7 @@ function soundId(letter) {
 }
 
 function activePath() {
-  return Progress.data.chapter === 1 ? PATH : PATH2;
+  return PATH.concat(PATH2);
 }
 
 function nodeDone(node) {
@@ -1051,11 +1051,6 @@ function boot() {
   const params = new URLSearchParams(location.search);
   Game.shot = params.has("shot");
   Game.shotAt = Number(params.get("at") || 0);
-  const chapterPick = Number(params.get("chapter"));
-  if (chapterPick === 1 || chapterPick === 2) {
-    Progress.data.chapter = chapterPick;
-    Progress.save();
-  }
   const go = params.get("go");
   if (go === "map") showMap();
   else if (go === "picker") showPicker();

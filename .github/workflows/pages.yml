@@ -35,7 +35,7 @@ jobs:
       - name: Collect site files
         run: |
           mkdir -p _site
-          cp -a index.html css js audio fonts LEARNING.md README.md _site/
+          cp -a index.html version.json css js audio fonts LEARNING.md README.md _site/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

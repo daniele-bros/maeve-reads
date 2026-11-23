@@ -175,6 +175,19 @@ Object.keys(positions).forEach((bucket) => {
   }
 });
 
+const version = JSON.parse(fs.readFileSync(path.join(root, "version.json"), "utf8"));
+const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const assetVersions = Array.from(html.matchAll(/\?v=([^"'&\s]+)/g)).map((match) => match[1]);
+const pageVersions = Array.from(html.matchAll(/var PAGE = "([^"]+)"/g)).map((match) => match[1]);
+if (!version.v) fail("version.json missing v");
+if (assetVersions.length < 6) fail("expected css and js versions in index.html");
+assetVersions.forEach((value) => {
+  if (value !== String(version.v)) fail("asset ?v=" + value + " does not match version.json " + version.v);
+});
+if (pageVersions.length !== 1 || pageVersions[0] !== String(version.v)) {
+  fail("page version " + pageVersions.join(",") + " does not match version.json " + version.v);
+}
+
 const real = errors.filter(Boolean);
 if (real.length) {
   console.error(real.join("\n"));
