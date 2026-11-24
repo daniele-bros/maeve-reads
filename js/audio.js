@@ -10,7 +10,8 @@ const AudioBus = {
 
   init() {
     const pick = () => {
-      this.voice = this.pickVoice();
+      const next = this.pickVoice();
+      if (next) this.voice = next;
     };
     try {
       pick();
@@ -20,20 +21,91 @@ const AudioBus = {
     }
   },
 
+  /* "female" contains the letters male, so a bare includes("male") check is wrong. */
+  maleNames: [
+    "google uk english male", "daniel", "alex", "fred", "david", "guy", "mark",
+    "christopher", "eric", "roger", "ryan", "andrew", "brian", "davis", "tony", "jason",
+  ],
+
+  femaleOrder: [
+    "google us english", "samantha", "aria", "jenny", "ava", "emma", "michelle",
+    "google uk english female", "karen", "moira", "tessa", "victoria", "zira",
+  ],
+
+  voiceBlob(voice) {
+    return (String(voice && voice.name || "") + " " + String(voice && voice.lang || "")).toLowerCase();
+  },
+
+  isMaleVoice(voice) {
+    const name = String(voice && voice.name || "").toLowerCase();
+    const blob = this.voiceBlob(voice);
+    if (/\bmale\b/.test(blob)) return true;
+    return this.maleNames.some((token) => new RegExp("\\b" + token + "\\b").test(name));
+  },
+
+  femaleRank(name) {
+    const lower = String(name || "").toLowerCase();
+    for (let i = 0; i < this.femaleOrder.length; i += 1) {
+      const token = this.femaleOrder[i];
+      if (token.indexOf(" ") !== -1) {
+        if (lower.indexOf(token) !== -1) return i;
+      } else if (new RegExp("\\b" + token + "\\b").test(lower)) return i;
+    }
+    return -1;
+  },
+
+  isFemaleVoice(voice) {
+    if (!voice || this.isMaleVoice(voice)) return false;
+    const name = String(voice.name || "").toLowerCase();
+    if (/\bfemale\b/.test(name)) return true;
+    return this.femaleRank(name) >= 0;
+  },
+
+  scoreVoice(voice) {
+    const name = String(voice && voice.name || "").toLowerCase();
+    const lang = String(voice && voice.lang || "").toLowerCase();
+    const blob = this.voiceBlob(voice);
+    let value = 0;
+    if (lang.indexOf("en-us") === 0 || lang.indexOf("en_us") === 0 || blob.indexOf("en-us") !== -1) value += 40;
+    else if (lang.indexOf("en") === 0 || name.indexOf("english") !== -1) value += 12;
+    const rank = this.femaleRank(name);
+    if (rank >= 0) value += 500 - rank * 20;
+    if (/\bfemale\b/.test(blob)) value += 40;
+    if (/\bnatural\b/.test(name)) value += 10;
+    if (this.isMaleVoice(voice)) value -= 1000;
+    return value;
+  },
+
+  chooseVoice(voices, savedName) {
+    const list = voices || [];
+    if (!list.length) return null;
+    const saved = savedName
+      ? list.find((voice) => voice.name === savedName && this.isFemaleVoice(voice))
+      : null;
+    const best = list.slice().sort((a, b) => this.scoreVoice(b) - this.scoreVoice(a))[0];
+    if (saved && this.scoreVoice(saved) >= this.scoreVoice(best)) return saved;
+    return best;
+  },
+
+  readVoiceName() {
+    try { return localStorage.getItem("maeve-reads-voice") || ""; }
+    catch (err) { return ""; }
+  },
+
+  writeVoiceName(name) {
+    try { localStorage.setItem("maeve-reads-voice", name); }
+    catch (err) { /* private mode */ }
+  },
+
   pickVoice() {
     const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
-    if (!voices.length) return null;
-    const score = (voice) => {
-      const name = (voice.name + " " + voice.lang).toLowerCase();
-      let value = 0;
-      if (name.includes("en-us") || name.includes("en_us")) value += 3;
-      else if (name.includes("en")) value += 2;
-      if (/female|samantha|jenny|aria|uk english female/.test(name)) value += 4;
-      if (name.includes("google us english")) value += 3;
-      if (name.includes("male")) value -= 2;
-      return value;
-    };
-    return voices.slice().sort((a, b) => score(b) - score(a))[0];
+    if (!voices.length) return this.voice || null;
+    const chosen = this.chooseVoice(voices, this.readVoiceName());
+    const incumbent = this.voice && this.isFemaleVoice(this.voice) ? this.voice : null;
+    let next = chosen;
+    if (incumbent && this.scoreVoice(incumbent) >= this.scoreVoice(chosen)) next = incumbent;
+    if (next && this.isFemaleVoice(next)) this.writeVoiceName(next.name);
+    return next;
   },
 
   unlock() {
@@ -151,7 +223,7 @@ const AudioBus = {
       const utter = new SpeechSynthesisUtterance(text);
       const words = String(text).trim().split(/\s+/).length;
       utter.rate = words <= 2 ? 1 : 0.95;
-      utter.pitch = 1.05;
+      utter.pitch = 1.1;
       utter.lang = "en-US";
       if (!this.voice) this.voice = this.pickVoice();
       if (this.voice) utter.voice = this.voice;
