@@ -10,7 +10,7 @@
   <title>Maeve Reads</title>
   <script>
     (function () {
-      var PAGE = "7";
+      var PAGE = "8";
       var KEY = "maeve-reads-reload";
       function check() {
         fetch("version.json", { cache: "no-store" }).then(function (res) {
@@ -41,7 +41,7 @@
       window.addEventListener("pageshow", function () { check(); });
     })();
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=7">
+  <link rel="stylesheet" href="css/styles.css?v=8">
 </head>
 <body>
   <div id="app">
@@ -107,10 +107,11 @@
   </div>
   <div id="confetti" aria-hidden="true"></div>
   <div id="overlay" hidden></div>
-  <script src="js/progress.js?v=7"></script>
-  <script src="js/data.js?v=7"></script>
-  <script src="js/audio.js?v=7"></script>
-  <script src="js/play.js?v=7"></script>
-  <script src="js/game.js?v=7"></script>
+  <script src="js/progress.js?v=8"></script>
+  <script src="js/data.js?v=8"></script>
+  <script src="js/voice-map.js?v=8"></script>
+  <script src="js/audio.js?v=8"></script>
+  <script src="js/play.js?v=8"></script>
+  <script src="js/game.js?v=8"></script>
 </body>
 </html>

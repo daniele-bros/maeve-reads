@@ -125,6 +125,7 @@ const AudioBus = {
 
   stop() {
     this.stopped = true;
+    this.playToken = (this.playToken || 0) + 1;
     this.abortListen();
     if (this._endPlay) this._endPlay(false);
     try {
@@ -153,19 +154,56 @@ const AudioBus = {
     return new Promise((resolve) => setTimeout(resolve, ms));
   },
 
+  clipCache: [],
+
   clipUrl(id) {
-    if (id.indexOf("w:") === 0) return "audio/words/" + id.slice(2) + ".mp3";
+    if (id.indexOf("w:") === 0) return "audio/voice/words/" + id.slice(2) + ".mp3";
     return "audio/phonemes/" + id + ".mp3";
   },
 
+  voiceKey(text) {
+    return String(text || "")
+      .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+      .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+      .replace(/\s+/g, " ")
+      .trim();
+  },
+
+  clipForSpeech(text) {
+    const key = this.voiceKey(text);
+    if (!key || typeof VoiceClips === "undefined" || !VoiceClips[key]) return "";
+    return VoiceClips[key];
+  },
+
   /* A whole utterance that is one letter, or a sentence that names a letter
-     ("say k", "says c"). The words "a" and "I" are allowed. */
+     ("say k", "says c"). The words "a" and "I" are allowed.
+     Contractions stay one word, so "Let's" is not a bare s. */
   hasBareLetter(text) {
     const raw = String(text || "").trim();
     if (/^[a-zA-Z][.!?]?$/.test(raw)) return true;
-    const tokens = raw.toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean);
+    const tokens = raw.toLowerCase()
+      .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+      .replace(/[a-z]'[a-z]/g, (part) => part.replace("'", ""))
+      .replace(/[^a-z\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
     const allowed = { a: 1, i: 1 };
     return tokens.some((token) => token.length === 1 && !allowed[token]);
+  },
+
+  async cachedSrc(url) {
+    const found = this.clipCache.find((item) => item.url === url);
+    if (found) return found.src;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("missing clip");
+    const blob = await res.blob();
+    const src = URL.createObjectURL(blob);
+    this.clipCache.push({ url, src });
+    if (this.clipCache.length > 12) {
+      const old = this.clipCache.shift();
+      try { URL.revokeObjectURL(old.src); } catch (err) { /* ignore */ }
+    }
+    return src;
   },
 
   playUrl(url, maxMs) {
@@ -199,10 +237,32 @@ const AudioBus = {
     await this.playUrl(this.clipUrl(id), word ? 1500 : 600);
   },
 
+  async playVoice(url, maxMs, token) {
+    if (this._endPlay) this._endPlay(false);
+    let src = url;
+    try { src = await this.cachedSrc(url); }
+    catch (err) { src = url; }
+    if (token !== this.playToken || this.stopped) return false;
+    return this.playUrl(src, maxMs);
+  },
+
   speak(text) {
+    const key = this.voiceKey(text);
+    const clip = this.clipForSpeech(key);
+    if (clip) {
+      this.playToken = (this.playToken || 0) + 1;
+      const token = this.playToken;
+      this.stopped = false;
+      const pip = document.getElementById("pip");
+      if (pip) pip.classList.add("talking");
+      return this.playVoice(clip, 12000, token).then((ok) => {
+        if (pip) pip.classList.remove("talking");
+        return ok;
+      });
+    }
     return new Promise((resolve) => {
-      if (!text || !window.speechSynthesis || this.hasBareLetter(text)) {
-        if (text && this.hasBareLetter(text)) this.blockedLetters = (this.blockedLetters || 0) + 1;
+      if (!key || !window.speechSynthesis || this.hasBareLetter(key)) {
+        if (key && this.hasBareLetter(key)) this.blockedLetters = (this.blockedLetters || 0) + 1;
         resolve();
         return;
       }

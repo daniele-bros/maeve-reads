@@ -73,4 +73,10 @@ if (bus.isMaleVoice({ name: "Google UK English Female", lang: "en-GB" })) fail("
 if (!bus.isFemaleVoice(us)) fail("Google US English should count as female");
 if (bus.isFemaleVoice(male)) fail("male voice counted as female");
 
+if (bus.hasBareLetter("Let's try tapping!")) fail("Let's was treated as a bare s");
+if (bus.hasBareLetter("Let’s try tapping!")) fail("curly Let's was treated as a bare s");
+if (!bus.hasBareLetter("k")) fail("a bare letter should still be blocked");
+if (!bus.hasBareLetter("Say k with me.")) fail("a named letter should still be blocked");
+if (bus.hasBareLetter("Yes!")) fail("Yes should be speakable");
+
 console.log("voice ok", chosen.name);

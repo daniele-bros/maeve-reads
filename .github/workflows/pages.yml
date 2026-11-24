@@ -27,6 +27,7 @@ jobs:
       - name: Validate round content
         run: |
           node tools/test-voice.mjs
+          node tools/test-speech-coverage.mjs
           node tools/validate-content.mjs
 
       - name: Configure GitHub Pages
